@@ -15,6 +15,10 @@ Two front-ends over the same protocol:
 > branch `raw-hid-config`). This app only does anything once that firmware is flashed.
 > The wire format is documented in [PROTOCOL.md](PROTOCOL.md).
 
+**Adding this to another keyboard?** See [PORTING.md](PORTING.md) — how the firmware works
+and step-by-step instructions for adding a compatible real-time-config interface to any QMK
+board that lacks a Vial port.
+
 ## Requirements
 
 - **Windows** (the CLI uses `hidapi` for USB access; WSL2 can't reach the device without usbipd).
