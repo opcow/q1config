@@ -13,9 +13,10 @@ Two front-ends over the same protocol:
 - **`q1config.html`** — a single-file browser GUI (WebHID; Chrome/Edge) with a graphical
   keyboard, key remapping, tap-dance editor, sliders/toggles, color pickers, and presets.
 
-> Companion firmware lives in the QMK tree (`keychron/q1_pro/ansi_knob` keymap `rtcfg`,
-> branch `raw-hid-config`). This app only does anything once that firmware is flashed.
-> The wire format is documented in [PROTOCOL.md](PROTOCOL.md).
+> Companion firmware: the `rtcfg` keymap in the QMK tree —
+> [opcow/qmk_firmware @ raw-hid-config](https://github.com/opcow/qmk_firmware/tree/raw-hid-config/keyboards/keychron/q1_pro/ansi_knob/keymaps/rtcfg)
+> (note: the `q1_pro` board lives on the `raw-hid-config` branch, not `master`). This app
+> only does anything once that firmware is flashed. The wire format is in [PROTOCOL.md](PROTOCOL.md).
 
 **Adding this to another keyboard?** See [PORTING.md](PORTING.md) — how the firmware works
 and step-by-step instructions for adding a compatible real-time-config interface to any QMK
