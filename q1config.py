@@ -57,7 +57,7 @@ import json
 from pathlib import Path
 import hid
 
-TD_SLOT_COUNT = 32
+TD_SLOT_COUNT = 64
 FLAG_KEYS = ["caps_word", "permissive_hold", "hold_on_other_key", "retro_tapping", "auto_shift"]
 PRESET_DIR = Path(__file__).resolve().parent / "presets"
 
@@ -81,7 +81,7 @@ ROWS, COLS, LAYERS = 6, 16, 4
 
 TD_NAMES = ["NO_CAPS", "HOME_END", "ESC_CW", "SCLN_CLN",
             "F_PSCR", "F_SCRL", "F_PAUS", "F_NUM"]
-TD_NAMES += [f"TD{i}" for i in range(len(TD_NAMES), 32)]  # generic slots 8..31
+TD_NAMES += [f"TD{i}" for i in range(len(TD_NAMES), TD_SLOT_COUNT)]  # generic slots 8..63
 
 # --- keycode name -> value table (QMK basic keycodes / HID usage IDs) ---
 NAMES = {"NO": 0x00, "TRNS": 0x01}
@@ -352,10 +352,10 @@ def main():
     if op == "get":
         r = send(h, [CMD, GET_GLOBAL])
         count = r[4]
-        enabled = int.from_bytes(bytes(r[5:9]), "little")
-        mode = int.from_bytes(bytes(r[9:13]), "little")
+        enabled = int.from_bytes(bytes(r[5:13]), "little")
+        mode = int.from_bytes(bytes(r[13:21]), "little")
         print(f"tapping_term={r[2] | (r[3] << 8)}  slots={count}")
-        print(f"td_enabled=0x{enabled:08X}  td_mode=0x{mode:08X}")
+        print(f"td_enabled=0x{enabled:016X}  td_mode=0x{mode:016X}")
     elif op == "tt":
         r = send(h, [CMD, SET_TT, int(a[1]) & 0xFF, (int(a[1]) >> 8) & 0xFF])
         print(f"tapping_term={r[2] | (r[3] << 8)}")

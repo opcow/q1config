@@ -76,7 +76,7 @@
     <table id="tdtable"><thead><tr>
       <th>#</th><th>name</th><th>tap</th><th>secondary</th><th>mode</th><th>enabled</th>
     </tr></thead><tbody></tbody></table>
-    <div class="hint" style="margin-top:6px"><button id="showall">Show all 32 slots</button></div>
+    <div class="hint" style="margin-top:6px"><button id="showall">Show all 64 slots</button></div>
   </div>
 
   <h2>Timing &amp; features</h2>
@@ -118,7 +118,7 @@ Object.assign(KC,{COLN:0x0233,EXLM:0x021E,AT:0x021F,HASH:0x0220,DLR:0x0221,PERC:
   LCBR:0x022F,RCBR:0x0230,PIPE:0x0231,DQUO:0x0234,TILD:0x0235,LT:0x0236,GT:0x0237,QUES:0x0238});
 Object.assign(KC,{CW_TOGG:0x7C73,QK_LOCK:0x7C59,AS_DOWN:0x7C10,AS_UP:0x7C11,AS_RPT:0x7C12,
   AS_ON:0x7C13,AS_OFF:0x7C14,AS_TOGG:0x7C15});
-for(let i=0;i<32;i++)KC["TD"+i]=0x5700|i;
+for(let i=0;i<64;i++)KC["TD"+i]=0x5700|i;
 const ENTRIES=[]; const seenCode=new Set();
 for(const [n,c] of Object.entries(KC)){ if(seenCode.has(c))continue; seenCode.add(c); ENTRIES.push([n,c]); }
 function nameOf(code){ if(code>=0x5700&&code<=0x57FF) return "TD"+(code&0xFF);
@@ -153,7 +153,7 @@ const LAYOUT=[
  [5,11,11,5.25,1],[5,12,12,5.25,1],[5,13,13.25,5.5,1],[5,14,14.25,5.5,1],[5,15,15.25,5.5,1],
 ];
 const TD_NAMES=["NO_CAPS","HOME_END","ESC_CW","SCLN_CLN","F_PSCR","F_SCRL","F_PAUS","F_NUM"];
-for(let i=8;i<32;i++) TD_NAMES.push("TD"+i);
+for(let i=8;i<64;i++) TD_NAMES.push("TD"+i);
 
 //// ---- transport ----
 const CMD=0xAC;
@@ -176,10 +176,9 @@ function xfer(payload){
   queue=queue.then(run,run); return queue;
 }
 const u16=(d,o)=>d[o]|(d[o+1]<<8);
-const u32=(d,o)=>(d[o]|(d[o+1]<<8)|(d[o+2]<<16)|(d[o+3]<<24))>>>0;
 
 // 0xAC commands
-const getGlobal =()=>xfer([CMD,0x01]).then(d=>({tt:u16(d,2),slots:d[4],en:u32(d,5),mode:u32(d,9)}));
+const getGlobal =()=>xfer([CMD,0x01]).then(d=>({tt:u16(d,2),slots:d[4]}));
 const setTT     =v=>xfer([CMD,0x02,v&0xff,(v>>8)&0xff]);
 const setTdEn   =(i,on)=>xfer([CMD,0x03,i,on?1:0]);
 const setTdMode =(i,m)=>xfer([CMD,0x04,i,m]);
@@ -282,7 +281,7 @@ $("#identify")?.addEventListener("click",async()=>{
 
 async function buildTapDance(){
   const tb=$("#tdtable tbody"); tb.innerHTML="";
-  const n=showAll?32:8;
+  const n=showAll?64:8;
   for(let i=0;i<n;i++){
     const t=await getTd(i);
     const tr=document.createElement("tr");
@@ -302,7 +301,7 @@ async function buildTapDance(){
   }
 }
 $("#showall").addEventListener("click",async()=>{ showAll=!showAll;
-  $("#showall").textContent=showAll?"Show first 8 slots":"Show all 32 slots"; await buildTapDance(); });
+  $("#showall").textContent=showAll?"Show first 8 slots":"Show all 64 slots"; await buildTapDance(); });
 
 async function buildFeatures(){
   const g=await getGlobal(); const f=await getFeat();
@@ -377,7 +376,7 @@ async function readConfig(){
   const g=await getGlobal(), f=await getFeat();
   const flags={}; FLAG_KEYS.forEach((k,bit)=>flags[k]=!!(f.flags&(1<<bit)));
   const tap_dance=[];
-  for(let i=0;i<32;i++){ const t=await getTd(i);
+  for(let i=0;i<64;i++){ const t=await getTd(i);
     tap_dance.push({tap:nameOf(t.tap),secondary:nameOf(t.sec),mode:t.mode?"hold":"double",enabled:!!t.en}); }
   const indicators=[];
   for(let i=0;i<3;i++){ const v=await getInd(i);
@@ -394,7 +393,7 @@ async function writeConfig(p){
     if(cur[k]!==p[k]){ await setParam(pid,p[k]); n++; }
   for(let bit=0;bit<FLAG_KEYS.length;bit++){ const k=FLAG_KEYS[bit];
     const want=!!(p.flags&&p.flags[k]); if(cur.flags[k]!==want){ await setFlag(bit,want); n++; } }
-  for(let i=0;i<32 && i<(p.tap_dance||[]).length;i++){ const c=cur.tap_dance[i],t=p.tap_dance[i];
+  for(let i=0;i<64 && i<(p.tap_dance||[]).length;i++){ const c=cur.tap_dance[i],t=p.tap_dance[i];
     if(c.tap!==t.tap||c.secondary!==t.secondary){ await setTdKc(i,kcParse(t.tap),kcParse(t.secondary)); n++; }
     if(c.mode!==t.mode){ await setTdMode(i,t.mode==="hold"?1:0); n++; }
     if(c.enabled!==t.enabled){ await setTdEn(i,t.enabled?1:0); n++; } }
