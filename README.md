@@ -1,5 +1,7 @@
 # q1config
 
+Live page: <https://opcow.github.io/q1config/>
+
 Repository: <https://github.com/opcow/q1config>
 
 Host-side configuration tools for a customized **Keychron Q1 Pro** (ANSI knob) running a
