@@ -48,7 +48,7 @@
 </style>
 </head>
 <body>
-<h1>Keychron Q1 Pro — runtime config</h1>
+<h1>Keychron Q1 Pro — runtime config <span style="font-size:12px;color:#9aa0ab;font-weight:normal">build 2026-06-20</span></h1>
 <div class="hint">WebHID (Chrome/Edge). Serve over http://localhost — <code>file://</code> won't work.</div>
 
 <div id="bar">
@@ -118,10 +118,27 @@ Object.assign(KC,{COLN:0x0233,EXLM:0x021E,AT:0x021F,HASH:0x0220,DLR:0x0221,PERC:
   LCBR:0x022F,RCBR:0x0230,PIPE:0x0231,DQUO:0x0234,TILD:0x0235,LT:0x0236,GT:0x0237,QUES:0x0238});
 Object.assign(KC,{CW_TOGG:0x7C73,QK_LOCK:0x7C59,AS_DOWN:0x7C10,AS_UP:0x7C11,AS_RPT:0x7C12,
   AS_ON:0x7C13,AS_OFF:0x7C14,AS_TOGG:0x7C15});
+// Modifiers
+Object.assign(KC,{LCTL:0xE0,LSFT:0xE1,LALT:0xE2,LGUI:0xE3,RCTL:0xE4,RSFT:0xE5,RALT:0xE6,RGUI:0xE7});
+// Media / consumer / system (knob press defaults to MUTE = 0xA8)
+Object.assign(KC,{PWR:0xA5,SLEP:0xA6,WAKE:0xA7,MUTE:0xA8,VOLU:0xA9,VOLD:0xAA,
+  MNXT:0xAB,MPRV:0xAC,MSTP:0xAD,MPLY:0xAE,MSEL:0xAF,EJCT:0xB0,MAIL:0xB1,CALC:0xB2,MYCM:0xB3,
+  WSCH:0xB4,WHOM:0xB5,WBAK:0xB6,WFWD:0xB7,WSTP:0xB8,WREF:0xB9,WFAV:0xBA,
+  MFFD:0xBB,MRWD:0xBC,BRIU:0xBD,BRID:0xBE});
+// Layer-switch keycodes (stride 0x20, layer in low bits); first 8 for the picker
+for(let l=0;l<8;l++){ KC["TO("+l+")"]=0x5200|l; KC["MO("+l+")"]=0x5220|l;
+  KC["DF("+l+")"]=0x5240|l; KC["TG("+l+")"]=0x5260|l; }
 for(let i=0;i<64;i++)KC["TD"+i]=0x5700|i;
 const ENTRIES=[]; const seenCode=new Set();
 for(const [n,c] of Object.entries(KC)){ if(seenCode.has(c))continue; seenCode.add(c); ENTRIES.push([n,c]); }
 function nameOf(code){ if(code>=0x5700&&code<=0x57FF) return "TD"+(code&0xFF);
+  switch(code&0xFFE0){
+    case 0x5200: return "TO("+(code&0x1F)+")";
+    case 0x5220: return "MO("+(code&0x1F)+")";
+    case 0x5240: return "DF("+(code&0x1F)+")";
+    case 0x5260: return "TG("+(code&0x1F)+")";
+    case 0x5280: return "OSL("+(code&0x1F)+")";
+    case 0x52C0: return "TT("+(code&0x1F)+")"; }
   for(const [n,c] of ENTRIES) if(c===code) return n;
   return "0x"+code.toString(16).padStart(4,"0").toUpperCase(); }
 function optionsHTML(sel){
