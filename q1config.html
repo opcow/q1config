@@ -48,7 +48,7 @@
 </style>
 </head>
 <body>
-<h1>Keychron Q1 Pro — runtime config <span style="font-size:12px;color:#9aa0ab;font-weight:normal">build 2026-06-20</span></h1>
+<h1>Keychron Q1 Pro — runtime config <span style="font-size:12px;color:#9aa0ab;font-weight:normal">build 2026-06-20b</span></h1>
 <div class="hint">WebHID (Chrome/Edge). Serve over http://localhost — <code>file://</code> won't work.</div>
 
 <div id="bar">
@@ -124,7 +124,15 @@ Object.assign(KC,{LCTL:0xE0,LSFT:0xE1,LALT:0xE2,LGUI:0xE3,RCTL:0xE4,RSFT:0xE5,RA
 Object.assign(KC,{PWR:0xA5,SLEP:0xA6,WAKE:0xA7,MUTE:0xA8,VOLU:0xA9,VOLD:0xAA,
   MNXT:0xAB,MPRV:0xAC,MSTP:0xAD,MPLY:0xAE,MSEL:0xAF,EJCT:0xB0,MAIL:0xB1,CALC:0xB2,MYCM:0xB3,
   WSCH:0xB4,WHOM:0xB5,WBAK:0xB6,WFWD:0xB7,WSTP:0xB8,WREF:0xB9,WFAV:0xBA,
-  MFFD:0xBB,MRWD:0xBC,BRIU:0xBD,BRID:0xBE});
+  MFFD:0xBB,MRWD:0xBC,BRIU:0xBD,BRID:0xBE,CPNL:0xBF,ASST:0xC0,MCTL:0xC1,LPAD:0xC2});
+// RGB matrix controls (QK_RGB range, 0x7820)
+Object.assign(KC,{RGB_TOG:0x7820,RGB_MOD:0x7821,RGB_RMOD:0x7822,RGB_HUI:0x7823,RGB_HUD:0x7824,
+  RGB_SAI:0x7825,RGB_SAD:0x7826,RGB_VAI:0x7827,RGB_VAD:0x7828,RGB_SPI:0x7829,RGB_SPD:0x782A});
+// Magic: toggle N-key rollover (Keychron Fn+N)
+Object.assign(KC,{NK_TOGG:0x7013});
+// Keychron vendor custom keycodes (QK_KB range, 0x7E00) — names match VIA
+["LOpt","ROpt","LCmd","RCmd","MCtrl","LPad","Task","File","SShot","Cortana","Siri","BT1","BT2","BT3","Batt"]
+  .forEach((n,i)=>{ KC[n]=0x7E00+i; });
 // Layer-switch keycodes (stride 0x20, layer in low bits); first 8 for the picker
 for(let l=0;l<8;l++){ KC["TO("+l+")"]=0x5200|l; KC["MO("+l+")"]=0x5220|l;
   KC["DF("+l+")"]=0x5240|l; KC["TG("+l+")"]=0x5260|l; }

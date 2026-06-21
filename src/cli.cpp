@@ -1,6 +1,7 @@
 #include "cli.h"
 #include "hid.h"
 #include "keycodes.h"
+#include "layout.h"
 #include "preset.h"
 #include "protocol.h"
 #include <cstdio>
@@ -23,6 +24,7 @@ static void usage() {
         "  tt [ms]              get or set tapping term\n"
         "  features             show feature flags and timing params\n"
         "  td [N]               show tap-dance slots (default 8, max 64)\n"
+        "  keymap [L] [file]    dump keymap (L layers, default 4) to file\n"
         "  indicators           show RGB indicator states\n"
         "  save [file]          save config to JSON preset (default: preset.json)\n"
         "  load <file>          load config from JSON preset\n"
@@ -112,6 +114,31 @@ int cli_main(int argc, char* argv[]) {
         nlohmann::json p; f >> p;
         int n = writeConfig(dev, p);
         printf("Loaded %s (%d change(s))\n", argv[2], n);
+        return 0;
+    }
+
+    if (!strcmp(cmd, "keymap")) {
+        if (!connect()) return 1;
+        int layers = (argc >= 3) ? atoi(argv[2]) : 4;
+        const char* path = (argc >= 4) ? argv[3] : "keymap_dump.txt";
+        FILE* out = nullptr;
+#ifdef _WIN32
+        fopen_s(&out, path, "w");
+#else
+        out = fopen(path, "w");
+#endif
+        if (!out) { fprintf(stderr, "cannot write %s\n", path); return 1; }
+        for (int l = 0; l < layers; l++) {
+            fprintf(out, "== layer %d ==\n", l);
+            for (auto& k : layout()) {
+                uint16_t kc = viaGet(dev, l, k.row, k.col);
+                std::string nm = nameOf(kc);
+                bool unnamed = (nm.size() > 1 && nm[0] == '0' && nm[1] == 'x');
+                fprintf(out, "  [%d,%2d] 0x%04X  %s%s\n", k.row, k.col, kc,
+                        nm.c_str(), unnamed ? "   <-- UNNAMED" : "");
+            }
+        }
+        fclose(out);
         return 0;
     }
 

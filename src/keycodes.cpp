@@ -53,6 +53,24 @@ static void buildTables() {
     KC["WSCH"]=0xB4; KC["WHOM"]=0xB5; KC["WBAK"]=0xB6; KC["WFWD"]=0xB7;
     KC["WSTP"]=0xB8; KC["WREF"]=0xB9; KC["WFAV"]=0xBA;
     KC["MFFD"]=0xBB; KC["MRWD"]=0xBC; KC["BRIU"]=0xBD; KC["BRID"]=0xBE;
+    KC["CPNL"]=0xBF; KC["ASST"]=0xC0; KC["MCTL"]=0xC1; KC["LPAD"]=0xC2;
+
+    // RGB matrix controls (QK_RGB range, 0x7820)
+    KC["RGB_TOG"]=0x7820;  KC["RGB_MOD"]=0x7821; KC["RGB_RMOD"]=0x7822;
+    KC["RGB_HUI"]=0x7823;  KC["RGB_HUD"]=0x7824; KC["RGB_SAI"]=0x7825;
+    KC["RGB_SAD"]=0x7826;  KC["RGB_VAI"]=0x7827; KC["RGB_VAD"]=0x7828;
+    KC["RGB_SPI"]=0x7829;  KC["RGB_SPD"]=0x782A;
+
+    // Magic: toggle N-key rollover (Keychron Fn+N)
+    KC["NK_TOGG"]=0x7013;
+
+    // Keychron vendor custom keycodes (QK_KB range, 0x7E00) — names match VIA
+    const char* kc_custom[] = {
+        "LOpt", "ROpt", "LCmd", "RCmd", "MCtrl", "LPad", "Task", "File",
+        "SShot", "Cortana", "Siri", "BT1", "BT2", "BT3", "Batt"
+    };
+    for (int i = 0; i < (int)(sizeof(kc_custom)/sizeof(*kc_custom)); i++)
+        KC[kc_custom[i]] = (uint16_t)(0x7E00 + i);
 
     // Layer-switch keycodes (stride 0x20, layer in low bits). Register the
     // first 8 layers for the picker; nameOf() decodes the full range.
