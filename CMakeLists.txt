@@ -88,7 +88,8 @@ if(WIN32)
 elseif(APPLE)
   set(HIDAPI_TARGET hidapi::darwin)
 else()
-  set(HIDAPI_TARGET hidapi::libusb)
+  # Linux hidraw backend (needs libudev) — matches the hidraw udev rule below
+  set(HIDAPI_TARGET hidapi::hidraw)
 endif()
 
 target_link_libraries(q1config PRIVATE
@@ -120,7 +121,7 @@ elseif(APPLE)
   # Suppress macOS OpenGL deprecation warnings (OpenGL still works, just deprecated since 10.14)
   target_compile_definitions(q1config PRIVATE GL_SILENCE_DEPRECATION)
 else()
-  # Linux: hidapi uses libusb (install libusb-1.0-dev)
+  # Linux: hidapi uses the hidraw backend (install libudev-dev)
   # nfd uses GTK3 (install libgtk-3-dev) or xdg-desktop-portal
   # HID device access without root requires a udev rule, e.g.:
   #   /etc/udev/rules.d/70-keychron.rules:
