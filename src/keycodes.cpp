@@ -41,6 +41,29 @@ static void buildTables() {
     KC["AS_DOWN"]=0x7C10; KC["AS_UP"]=0x7C11; KC["AS_RPT"]=0x7C12;
     KC["AS_ON"]=0x7C13;   KC["AS_OFF"]=0x7C14; KC["AS_TOGG"]=0x7C15;
 
+    // Modifiers
+    KC["LCTL"]=0xE0; KC["LSFT"]=0xE1; KC["LALT"]=0xE2; KC["LGUI"]=0xE3;
+    KC["RCTL"]=0xE4; KC["RSFT"]=0xE5; KC["RALT"]=0xE6; KC["RGUI"]=0xE7;
+
+    // Media / consumer / system (knob press defaults to MUTE = 0xA8)
+    KC["PWR"]=0xA5;  KC["SLEP"]=0xA6; KC["WAKE"]=0xA7;
+    KC["MUTE"]=0xA8; KC["VOLU"]=0xA9; KC["VOLD"]=0xAA;
+    KC["MNXT"]=0xAB; KC["MPRV"]=0xAC; KC["MSTP"]=0xAD; KC["MPLY"]=0xAE; KC["MSEL"]=0xAF;
+    KC["EJCT"]=0xB0; KC["MAIL"]=0xB1; KC["CALC"]=0xB2; KC["MYCM"]=0xB3;
+    KC["WSCH"]=0xB4; KC["WHOM"]=0xB5; KC["WBAK"]=0xB6; KC["WFWD"]=0xB7;
+    KC["WSTP"]=0xB8; KC["WREF"]=0xB9; KC["WFAV"]=0xBA;
+    KC["MFFD"]=0xBB; KC["MRWD"]=0xBC; KC["BRIU"]=0xBD; KC["BRID"]=0xBE;
+
+    // Layer-switch keycodes (stride 0x20, layer in low bits). Register the
+    // first 8 layers for the picker; nameOf() decodes the full range.
+    for (int l = 0; l < 8; l++) {
+        std::string n = "(" + std::to_string(l) + ")";
+        KC["TO" + n] = (uint16_t)(0x5200 | l);
+        KC["MO" + n] = (uint16_t)(0x5220 | l);
+        KC["DF" + n] = (uint16_t)(0x5240 | l);
+        KC["TG" + n] = (uint16_t)(0x5260 | l);
+    }
+
     for (int i = 0; i < 32; i++) KC["TD" + std::to_string(i)] = (uint16_t)(0x5700 | i);
 
     std::unordered_map<uint16_t, bool> seen;
@@ -57,6 +80,15 @@ std::string nameOf(uint16_t code) {
     buildTables();
     if (code >= 0x5700 && code <= 0x57FF)
         return "TD" + std::to_string(code & 0xFF);
+    // Layer-switch keycodes: <prefix>(layer), 0x20 stride
+    switch (code & 0xFFE0) {
+        case 0x5200: return "TO("  + std::to_string(code & 0x1F) + ")";
+        case 0x5220: return "MO("  + std::to_string(code & 0x1F) + ")";
+        case 0x5240: return "DF("  + std::to_string(code & 0x1F) + ")";
+        case 0x5260: return "TG("  + std::to_string(code & 0x1F) + ")";
+        case 0x5280: return "OSL(" + std::to_string(code & 0x1F) + ")";
+        case 0x52C0: return "TT("  + std::to_string(code & 0x1F) + ")";
+    }
     for (auto& [n, c] : ENTRIES)
         if (c == code) return n;
     char buf[12];
