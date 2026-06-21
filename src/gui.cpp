@@ -68,30 +68,43 @@ static void loadAll() {
 }
 
 // Tabbed category grid — call inside an open popup. Sets kc and returns true
-// (and closes the popup) when a keycode button is clicked.
+// (and closes the popup) when a keycode button is clicked. A filter box at the
+// top narrows the grid (within the active tab) by case-insensitive substring.
 static bool KcPickerBody(uint16_t& kc) {
+    static char filter[32] = "";
+    auto low = [](std::string s) { for (auto& c : s) if (c >= 'A' && c <= 'Z') c += 32; return s; };
+
+    if (ImGui::IsWindowAppearing()) { filter[0] = 0; ImGui::SetKeyboardFocusHere(); }
+    ImGui::SetNextItemWidth(-1);
+    ImGui::InputTextWithHint("##kcfilter", "filter (e.g. vol, rgb, td)", filter, sizeof(filter));
+    std::string f = low(filter);
+
     bool changed = false;
     if (ImGui::BeginTabBar("##cats")) {
         for (const auto& cat : keycodeCategories()) {
             if (ImGui::BeginTabItem(cat.name.c_str())) {
-                ImGui::BeginChild("##grid", ImVec2(0, 300));
+                ImGui::BeginChild("##grid", ImVec2(0, 270));
+                std::vector<const std::pair<std::string, uint16_t>*> vis;
+                for (const auto& e : cat.entries)
+                    if (f.empty() || low(e.first).find(f) != std::string::npos) vis.push_back(&e);
+
                 float right   = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
                 float spacing = ImGui::GetStyle().ItemSpacing.x;
                 float padX    = ImGui::GetStyle().FramePadding.x * 2;
-                for (size_t i = 0; i < cat.entries.size(); i++) {
-                    bool sel = cat.entries[i].second == kc;
+                for (size_t i = 0; i < vis.size(); i++) {
+                    bool sel = vis[i]->second == kc;
                     if (sel) ImGui::PushStyleColor(ImGuiCol_Button,
                                  ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
                     ImGui::PushID((int)i);
-                    if (ImGui::Button(cat.entries[i].first.c_str())) {
-                        kc = cat.entries[i].second; changed = true;
+                    if (ImGui::Button(vis[i]->first.c_str())) {
+                        kc = vis[i]->second; changed = true;
                         ImGui::CloseCurrentPopup();
                     }
                     ImGui::PopID();
                     if (sel) ImGui::PopStyleColor();
                     // Wrap manually: stay on the row only if the next button fits.
-                    if (i + 1 < cat.entries.size()) {
-                        float nextW = ImGui::CalcTextSize(cat.entries[i + 1].first.c_str()).x + padX;
+                    if (i + 1 < vis.size()) {
+                        float nextW = ImGui::CalcTextSize(vis[i + 1]->first.c_str()).x + padX;
                         if (ImGui::GetItemRectMax().x + spacing + nextW < right)
                             ImGui::SameLine();
                     }

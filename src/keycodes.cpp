@@ -82,7 +82,8 @@ static void buildTables() {
         KC["TG" + n] = (uint16_t)(0x5260 | l);
     }
 
-    for (int i = 0; i < 32; i++) KC["TD" + std::to_string(i)] = (uint16_t)(0x5700 | i);
+    // One TDn per tap-dance slot (TD_SLOT_COUNT = 64 in the firmware keymap).
+    for (int i = 0; i < 64; i++) KC["TD" + std::to_string(i)] = (uint16_t)(0x5700 | i);
 
     std::unordered_map<uint16_t, bool> seen;
     for (auto& [n, c] : KC) {
@@ -146,6 +147,27 @@ static const char* categoryOf(uint16_t c) {
     return "Special";
 }
 
+// Natural order: embedded digit runs compare numerically (TD2 < TD10, F2 < F12).
+static bool naturalLess(const std::string& a, const std::string& b) {
+    size_t i = 0, j = 0;
+    while (i < a.size() && j < b.size()) {
+        bool da = isdigit((unsigned char)a[i]), db = isdigit((unsigned char)b[j]);
+        if (da && db) {
+            size_t ia = i, jb = j;
+            while (ia < a.size() && isdigit((unsigned char)a[ia])) ia++;
+            while (jb < b.size() && isdigit((unsigned char)b[jb])) jb++;
+            long va = std::stol(a.substr(i, ia - i));
+            long vb = std::stol(b.substr(j, jb - j));
+            if (va != vb) return va < vb;
+            i = ia; j = jb;
+        } else {
+            if (a[i] != b[j]) return a[i] < b[j];
+            i++; j++;
+        }
+    }
+    return (a.size() - i) < (b.size() - j);
+}
+
 const std::vector<KcCategory>& keycodeCategories() {
     static std::vector<KcCategory> CATS;
     if (!CATS.empty()) return CATS;
@@ -156,6 +178,8 @@ const std::vector<KcCategory>& keycodeCategories() {
         KcCategory cat{name, {}};
         for (auto& e : ENTRIES)
             if (std::string(categoryOf(e.second)) == name) cat.entries.push_back(e);
+        std::sort(cat.entries.begin(), cat.entries.end(),
+                  [](const auto& a, const auto& b) { return naturalLess(a.first, b.first); });
         if (!cat.entries.empty()) CATS.push_back(std::move(cat));
     }
     return CATS;
