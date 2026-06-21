@@ -26,9 +26,9 @@ Request byte 0 = `0xAC`, byte 1 = subcommand. For `0xAC` replies, **byte 1 is a 
 | 06 | GET_TD | idx | `[2]` idx, `[3..4]` tap kc, `[5..6]` secondary kc, `[7]` enabled, `[8]` mode |
 | 07 | SET_TD_KC | idx, tap_lo, tap_hi, sec_lo, sec_hi | `[2]` idx |
 | 08 | IDENTIFY | — | ack `[1]=00`; then an **unsolicited** report `[0]=AC,[1]=08,[2]=row,[3]=col,[4..5]=kc` on the next keypress (that press is consumed) |
-| 09 | GET_FEATURES | — | `[2..3]` flags, `[4..5]` quick_tap_term, `[6..7]` autoshift_timeout, `[8..9]` caps_word_timeout |
+| 09 | GET_FEATURES | — | `[2..3]` flags, `[4..5]` quick_tap_term, `[6..7]` autoshift_timeout, `[8..9]` caps_word_timeout, `[10]` debounce_time, `[11]` debounce_method |
 | 0A | SET_FLAG | bit, val(0/1) | features |
-| 0B | SET_PARAM | id(0=quicktap,1=astimeout,2=cwtimeout), lo, hi | features |
+| 0B | SET_PARAM | id(0=quicktap,1=astimeout,2=cwtimeout,3=debounce,4=debounce_method), lo, hi | features |
 | 0C | GET_INDICATOR | idx | `[2]` idx, `[3]` enabled, `[4]` r, `[5]` g, `[6]` b |
 | 0D | SET_INDICATOR | idx, enabled, r, g, b | `[2]` idx |
 
@@ -38,6 +38,9 @@ All multi-byte scalars are **little-endian**.
 4 auto_shift.
 
 **Indicators (idx):** 0 Caps Lock, 1 Caps Word, 2 WIN_FN layer.
+
+**Debounce methods (idx):** 0 none, 1 sym_defer_g (default), 2 sym_eager_pk,
+3 asym_eager_defer_pk. A `debounce_time` of 0 means no debounce regardless of method.
 
 **Tap-dance slots:** 64 total, named `TD0`–`TD63` (the name is the slot index). Slots 0–7 ship
 with default keycodes; 8–63 start blank. The keycode that triggers slot *n* is `TD(n) = 0x5700 | n`.
@@ -58,7 +61,7 @@ Layers: 0 MAC_BASE, 1 MAC_FN, 2 WIN_BASE, 3 WIN_FN. Matrix is 6 rows × 16 cols.
 ## EEPROM / versioning
 
 Config persists in QMK's user data block (296 bytes). `EECONFIG_USER_DATA_VERSION` in the
-firmware's `config.h` (currently `0x00514405`) is bumped whenever the struct layout changes;
+firmware's `config.h` (currently `0x00514407`) is bumped whenever the struct layout changes;
 on the next flash the stored config is discarded and firmware defaults reapplied.
 
 ## Preset JSON schema
@@ -71,6 +74,8 @@ on the next flash the stored config is discarded and firmware defaults reapplied
   "quick_tap_term": 120,
   "autoshift_timeout": 175,
   "caps_word_timeout": 5000,
+  "debounce_time": 5,
+  "debounce_method": "sym_defer_g",
   "flags": { "caps_word": true, "permissive_hold": false, "hold_on_other_key": false,
              "retro_tapping": false, "auto_shift": false },
   "tap_dance": [ { "tap": "NO", "secondary": "CAPS", "mode": "double", "enabled": true }, … 64 ],

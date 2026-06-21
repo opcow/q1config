@@ -59,6 +59,8 @@ int cli_main(int argc, char* argv[]) {
         printf("quick_tap_term      %u ms\n", f.quicktap);
         printf("autoshift_timeout   %u ms\n", f.astimeout);
         printf("caps_word_timeout   %u ms\n", f.cwtimeout);
+        printf("debounce            %u ms\n", f.debounce);
+        printf("debounce_method     %s\n", dbMethodName(f.debounceMethod));
         const char* names[] = {
             "caps_word","permissive_hold","hold_on_other_key","retro_tapping","auto_shift"
         };

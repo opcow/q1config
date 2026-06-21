@@ -1,4 +1,17 @@
 #include "protocol.h"
+#include <cstring>
+
+static const char* const DB_METHODS[] = {"none", "sym_defer_g", "sym_eager_pk", "asym_eager_defer_pk"};
+static constexpr int DB_METHOD_COUNT = 4;
+
+const char* dbMethodName(uint8_t idx) {
+    return (idx < DB_METHOD_COUNT) ? DB_METHODS[idx] : "?";
+}
+int dbMethodIndex(const char* name) {
+    for (int i = 0; i < DB_METHOD_COUNT; i++)
+        if (!strcmp(name, DB_METHODS[i])) return i;
+    return -1;
+}
 
 static uint16_t u16(const std::array<uint8_t,32>& d, int o) {
     return (uint16_t)(d[o] | (d[o+1] << 8));
@@ -32,7 +45,7 @@ void startIdentify(HidDevice& d) { d.xfer({CMD, 0x08}); }
 
 FeatState getFeat(HidDevice& d) {
     auto r = d.xfer({CMD, 0x09});
-    return {u16(r,2), u16(r,4), u16(r,6), u16(r,8)};
+    return {u16(r,2), u16(r,4), u16(r,6), u16(r,8), r[10], r[11]};
 }
 void setFlag(HidDevice& d, int bit, bool on) {
     d.xfer({CMD, 0x0A, (uint8_t)bit, (uint8_t)(on ? 1 : 0)});

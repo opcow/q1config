@@ -32,6 +32,9 @@ Commands:
     quicktap <ms>                       quick tap term
     autoshift <0|1>                     Auto Shift on/off
     astimeout <ms>                      Auto Shift timeout
+    debounce <ms>                       matrix debounce time (0-255, 0 = none)
+    dbmethod <name|idx>                 debounce algorithm: none, sym_defer_g,
+                                          sym_eager_pk, asym_eager_defer_pk
 
   Presets (JSON files in ./presets/, shared with the WebHID GUI):
     presets                             list available presets
@@ -71,7 +74,9 @@ GET_INDICATOR, SET_INDICATOR = 0x0C, 0x0D
 # feature_flags bit positions (must match keymap.c FF_* )
 FF_CAPS_WORD, FF_PERMISSIVE, FF_HOKP, FF_RETRO, FF_AUTOSHIFT = 0, 1, 2, 3, 4
 # SET_PARAM ids
-PARAM_QUICKTAP, PARAM_ASTIMEOUT, PARAM_CWTIMEOUT = 0, 1, 2
+PARAM_QUICKTAP, PARAM_ASTIMEOUT, PARAM_CWTIMEOUT, PARAM_DEBOUNCE, PARAM_DEBOUNCE_METHOD = 0, 1, 2, 3, 4
+# debounce method index -> canonical name (must match keymap.c dispatcher order)
+DEBOUNCE_METHODS = ["none", "sym_defer_g", "sym_eager_pk", "asym_eager_defer_pk"]
 # indicator indices (must match keymap.c IND_* )
 IND_NAMES = ["capslock", "capsword", "winfn"]
 # Standard VIA dynamic-keymap commands (handled by via.c, big-endian keycode)
@@ -207,12 +212,28 @@ def show_features(h):
     quicktap = r[4] | (r[5] << 8)
     astimeout = r[6] | (r[7] << 8)
     cwtimeout = r[8] | (r[9] << 8)
+    debounce = r[10]
+    dbmethod = r[11]
     def on(b):
         return "on" if flags & (1 << b) else "off"
     print(f"caps_word={on(FF_CAPS_WORD)}  cw_timeout={cwtimeout}")
     print(f"permissive_hold={on(FF_PERMISSIVE)}  hold_on_other_key={on(FF_HOKP)}  "
           f"retro={on(FF_RETRO)}  quick_tap={quicktap}")
     print(f"auto_shift={on(FF_AUTOSHIFT)}  as_timeout={astimeout}")
+    print(f"debounce={debounce}ms  method={dbmethod_name(dbmethod)}")
+
+
+def dbmethod_name(i):
+    return DEBOUNCE_METHODS[i] if 0 <= i < len(DEBOUNCE_METHODS) else f"?{i}"
+
+
+def dbmethod_index(token):
+    if token.isdigit():
+        return int(token)
+    t = token.lower()
+    if t in DEBOUNCE_METHODS:
+        return DEBOUNCE_METHODS.index(t)
+    sys.exit(f"Unknown debounce method: {token} (use {', '.join(DEBOUNCE_METHODS)})")
 
 
 def ind_index(name):
@@ -255,6 +276,8 @@ def read_config(h):
         "quick_tap_term": f[4] | (f[5] << 8),
         "autoshift_timeout": f[6] | (f[7] << 8),
         "caps_word_timeout": f[8] | (f[9] << 8),
+        "debounce_time": f[10],
+        "debounce_method": dbmethod_name(f[11]),
         "flags": {key: bool(flags & (1 << bit)) for bit, key in enumerate(FLAG_KEYS)},
         "tap_dance": [],
         "indicators": [],
@@ -290,9 +313,11 @@ def write_config(h, preset):
     if chg("tt", cur["tapping_term"], preset["tapping_term"]):
         send(h, [CMD, SET_TT, preset["tapping_term"] & 0xFF, (preset["tapping_term"] >> 8) & 0xFF])
     for pid, key in ((PARAM_QUICKTAP, "quick_tap_term"), (PARAM_ASTIMEOUT, "autoshift_timeout"),
-                     (PARAM_CWTIMEOUT, "caps_word_timeout")):
-        if chg(key, cur[key], preset[key]):
+                     (PARAM_CWTIMEOUT, "caps_word_timeout"), (PARAM_DEBOUNCE, "debounce_time")):
+        if key in preset and chg(key, cur[key], preset[key]):
             set_param(h, pid, preset[key])
+    if "debounce_method" in preset and chg("debounce_method", cur["debounce_method"], preset["debounce_method"]):
+        set_param(h, PARAM_DEBOUNCE_METHOD, dbmethod_index(preset["debounce_method"]))
     for bit, key in enumerate(FLAG_KEYS):
         if chg(key, cur["flags"][key], preset["flags"].get(key, False)):
             set_flag(h, bit, preset["flags"].get(key, False))
@@ -431,6 +456,10 @@ def main():
         set_param(h, PARAM_QUICKTAP, a[1]); show_features(h)
     elif op == "astimeout":
         set_param(h, PARAM_ASTIMEOUT, a[1]); show_features(h)
+    elif op == "debounce":
+        set_param(h, PARAM_DEBOUNCE, a[1]); show_features(h)
+    elif op == "dbmethod":
+        set_param(h, PARAM_DEBOUNCE_METHOD, dbmethod_index(a[1])); show_features(h)
     elif op == "indicators":
         for i in range(len(IND_NAMES)):
             show_indicator(h, i)

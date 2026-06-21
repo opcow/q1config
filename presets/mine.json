@@ -5,6 +5,8 @@
   "quick_tap_term": 120,
   "autoshift_timeout": 175,
   "caps_word_timeout": 5000,
+  "debounce_time": 5,
+  "debounce_method": "sym_defer_g",
   "flags": {
     "caps_word": true,
     "permissive_hold": false,

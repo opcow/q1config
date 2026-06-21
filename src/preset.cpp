@@ -32,6 +32,7 @@ nlohmann::json readConfig(HidDevice& d) {
 
     return {{"schema", 1}, {"tapping_term", g.tt}, {"quick_tap_term", f.quicktap},
             {"autoshift_timeout", f.astimeout}, {"caps_word_timeout", f.cwtimeout},
+            {"debounce_time", f.debounce}, {"debounce_method", dbMethodName(f.debounceMethod)},
             {"flags", flags}, {"tap_dance", td}, {"indicators", ind}};
 }
 
@@ -42,9 +43,15 @@ int writeConfig(HidDevice& d, const nlohmann::json& p) {
     if (cur["tapping_term"] != p["tapping_term"]) { setTT(d, p["tapping_term"]); n++; }
 
     auto param = [&](const char* k, uint8_t pid) {
-        if (cur[k] != p[k]) { setParam(d, pid, (uint16_t)p[k].get<int>()); n++; }
+        if (p.contains(k) && cur[k] != p[k]) { setParam(d, pid, (uint16_t)p[k].get<int>()); n++; }
     };
     param("quick_tap_term", 0); param("autoshift_timeout", 1); param("caps_word_timeout", 2);
+    param("debounce_time", 3);
+
+    if (p.contains("debounce_method") && cur["debounce_method"] != p["debounce_method"]) {
+        int idx = dbMethodIndex(p["debounce_method"].get<std::string>().c_str());
+        if (idx >= 0) { setParam(d, 4, (uint16_t)idx); n++; }
+    }
 
     for (int bit = 0; bit < 5; bit++) {
         const char* k = FLAG_KEYS[bit];

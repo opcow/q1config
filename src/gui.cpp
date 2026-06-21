@@ -310,12 +310,14 @@ static void drawFeatures() {
         {"Quick tap term",     &g_feat.quicktap,    0,  500, 0, false},
         {"Auto-shift timeout", &g_feat.astimeout,  50,  500, 1, false},
         {"Caps Word timeout",  &g_feat.cwtimeout,   0,10000, 2, false},
+        {"Debounce",           &g_feat.debounce,    0,   50, 3, false},
     };
 
     float checkboxX = ImGui::GetCursorPosX() + 200 + ImGui::GetStyle().ItemSpacing.x + 72 + ImGui::GetStyle().ItemSpacing.x + 40;
 
     // Draw each timing parameter with its corresponding checkbox on the right
-    for (int j = 0; j < 4; j++) {
+    // (first 4 rows pair with flags 0-3; Debounce row 4 has no flag, auto_shift drawn below)
+    for (int j = 0; j < 5; j++) {
         auto& p = params[j];
         ImGui::PushID(p.label);
         ImGui::TextUnformatted(p.label);
@@ -353,6 +355,22 @@ static void drawFeatures() {
         if (on) g_feat.flags |=  (uint16_t)(1 << 4);
         else    g_feat.flags &= ~(uint16_t)(1 << 4);
         try { setFlag(g_dev, 4, on); } catch (...) {}
+    }
+
+    // Debounce method selector
+    ImGui::TextUnformatted("Debounce method");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(200);
+    if (ImGui::BeginCombo("##dbmethod", dbMethodName(g_feat.debounceMethod))) {
+        for (uint8_t i = 0; i < 4; i++) {
+            bool sel = (g_feat.debounceMethod == i);
+            if (ImGui::Selectable(dbMethodName(i), sel)) {
+                g_feat.debounceMethod = i;
+                try { setParam(g_dev, 4, i); } catch (...) {}
+            }
+            if (sel) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
     }
 }
 

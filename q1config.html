@@ -280,7 +280,7 @@ const setTdMode =(i,m)=>xfer([CMD,0x04,i,m]);
 const resetCfg  =()=>xfer([CMD,0x05]);
 const getTd     =i=>xfer([CMD,0x06,i]).then(d=>({tap:u16(d,3),sec:u16(d,5),en:d[7],mode:d[8]}));
 const setTdKc   =(i,tap,sec)=>xfer([CMD,0x07,i,tap&0xff,(tap>>8)&0xff,sec&0xff,(sec>>8)&0xff]);
-const getFeat   =()=>xfer([CMD,0x09]).then(d=>({flags:u16(d,2),quicktap:u16(d,4),astimeout:u16(d,6),cwtimeout:u16(d,8)}));
+const getFeat   =()=>xfer([CMD,0x09]).then(d=>({flags:u16(d,2),quicktap:u16(d,4),astimeout:u16(d,6),cwtimeout:u16(d,8),debounce:d[10],dbmethod:d[11]}));
 const setFlag   =(bit,on)=>xfer([CMD,0x0A,bit,on?1:0]);
 const setParam  =(pid,v)=>xfer([CMD,0x0B,pid,v&0xff,(v>>8)&0xff]);
 const getInd    =i=>xfer([CMD,0x0C,i]).then(d=>({en:d[3],r:d[4],g:d[5],b:d[6]}));
@@ -291,7 +291,9 @@ const viaSet    =(l,r,c,kc)=>xfer([0x05,l,r,c,(kc>>8)&0xff,kc&0xff]);
 const viaKmReset=()=>xfer([0x06]);
 
 const FF={CAPS_WORD:0,PERMISSIVE:1,HOKP:2,RETRO:3,AUTOSHIFT:4};
-const PARAM={QUICKTAP:0,ASTIMEOUT:1,CWTIMEOUT:2};
+const PARAM={QUICKTAP:0,ASTIMEOUT:1,CWTIMEOUT:2,DEBOUNCE:3,DEBOUNCE_METHOD:4};
+// debounce method index -> canonical name (must match keymap.c dispatcher order)
+const DEBOUNCE_METHODS=["none","sym_defer_g","sym_eager_pk","asym_eager_defer_pk"];
 
 //// ---- UI ----
 const U=42, GAP=4;
@@ -405,6 +407,10 @@ async function buildFeatures(){
       ${numRow("Quick tap term",f.quicktap,0,500)}
       ${numRow("Auto-shift timeout",f.astimeout,50,500)}
       ${numRow("Caps Word timeout",f.cwtimeout,0,10000)}
+      ${numRow("Debounce",f.debounce,0,50)}
+      <div class="row"><label>Debounce method</label>
+        <select id="dbmethod">${DEBOUNCE_METHODS.map((m,i)=>
+          `<option value="${i}"${i===f.dbmethod?" selected":""}>${m}</option>`).join("")}</select></div>
     </div>
     <div class="pillrow" style="flex-direction:column">
       ${chk("Caps Word",FF.CAPS_WORD,f.flags&(1<<FF.CAPS_WORD))}
@@ -418,6 +424,7 @@ async function buildFeatures(){
     if(label==="Quick tap term") return setParam(PARAM.QUICKTAP,v);
     if(label==="Auto-shift timeout") return setParam(PARAM.ASTIMEOUT,v);
     if(label==="Caps Word timeout") return setParam(PARAM.CWTIMEOUT,v);
+    if(label==="Debounce") return setParam(PARAM.DEBOUNCE,v);
   };
   $("#features").querySelectorAll("input[data-k]").forEach(inp=>{
     inp.oninput=()=>{ const k=inp.dataset.k;
@@ -426,6 +433,7 @@ async function buildFeatures(){
   });
   $("#features").querySelectorAll("input[data-bit]").forEach(c=>
     c.onchange=()=>setFlag(+c.dataset.bit,c.checked));
+  $("#dbmethod").onchange=e=>setParam(PARAM.DEBOUNCE_METHOD,+e.target.value);
 }
 
 const IND_NAMES=["Caps Lock","Caps Word","WIN_FN layer"];
@@ -470,14 +478,18 @@ async function readConfig(){
     const hex="#"+[v.r,v.g,v.b].map(x=>x.toString(16).padStart(2,"0")).join("").toUpperCase();
     indicators.push({enabled:!!v.en,color:hex}); }
   return {schema:1,tapping_term:g.tt,quick_tap_term:f.quicktap,autoshift_timeout:f.astimeout,
-          caps_word_timeout:f.cwtimeout,flags,tap_dance,indicators};
+          caps_word_timeout:f.cwtimeout,debounce_time:f.debounce,
+          debounce_method:DEBOUNCE_METHODS[f.dbmethod]||"sym_defer_g",flags,tap_dance,indicators};
 }
 async function writeConfig(p){
   const cur=await readConfig(); let n=0;
   if(cur.tapping_term!==p.tapping_term){ await setTT(p.tapping_term); n++; }
   for(const [k,pid] of [["quick_tap_term",PARAM.QUICKTAP],["autoshift_timeout",PARAM.ASTIMEOUT],
-                        ["caps_word_timeout",PARAM.CWTIMEOUT]])
-    if(cur[k]!==p[k]){ await setParam(pid,p[k]); n++; }
+                        ["caps_word_timeout",PARAM.CWTIMEOUT],["debounce_time",PARAM.DEBOUNCE]])
+    if(p[k]!==undefined && cur[k]!==p[k]){ await setParam(pid,p[k]); n++; }
+  if(p.debounce_method!==undefined && cur.debounce_method!==p.debounce_method){
+    const idx=DEBOUNCE_METHODS.indexOf(p.debounce_method);
+    if(idx>=0){ await setParam(PARAM.DEBOUNCE_METHOD,idx); n++; } }
   for(let bit=0;bit<FLAG_KEYS.length;bit++){ const k=FLAG_KEYS[bit];
     const want=!!(p.flags&&p.flags[k]); if(cur.flags[k]!==want){ await setFlag(bit,want); n++; } }
   for(let i=0;i<64 && i<(p.tap_dance||[]).length;i++){ const c=cur.tap_dance[i],t=p.tap_dance[i];
