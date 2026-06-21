@@ -237,6 +237,43 @@ static void drawKeyboard() {
         }
         ImGui::EndPopup();
     }
+
+    // Debounce settings — shown below the keyboard
+    ImGui::SeparatorText("Debounce");
+    ImGui::BeginDisabled(g_identifying);
+
+    ImGui::TextUnformatted("Time");
+    ImGui::SameLine();
+    {
+        int v = (int)g_feat.debounce;
+        ImGui::SetNextItemWidth(200);
+        bool ch = ImGui::SliderInt("##dbt", &v, 0, 50);
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(72);
+        ch |= ImGui::InputInt("ms##dbt", &v, 0, 0);
+        if (ch) {
+            v = std::clamp(v, 0, 50);
+            g_feat.debounce = (uint16_t)v;
+            try { setParam(g_dev, 3, g_feat.debounce); } catch (...) {}
+        }
+    }
+
+    ImGui::TextUnformatted("Method");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(200);
+    if (ImGui::BeginCombo("##dbmethod", dbMethodName(g_feat.debounceMethod))) {
+        for (uint8_t i = 0; i < 4; i++) {
+            bool sel = (g_feat.debounceMethod == i);
+            if (ImGui::Selectable(dbMethodName(i), sel)) {
+                g_feat.debounceMethod = i;
+                try { setParam(g_dev, 4, i); } catch (...) {}
+            }
+            if (sel) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+
+    ImGui::EndDisabled();
 }
 
 // ── tap-dance panel ───────────────────────────────────────────────────────────
@@ -306,21 +343,23 @@ static void drawFeatures() {
 
     struct P { const char* label; uint16_t* val; int lo, hi; uint8_t pid; bool isTT; };
     static const P params[] = {
-        {"Tapping term",       &g_global.tt,       50,  500, 0, true },
-        {"Quick tap term",     &g_feat.quicktap,    0,  500, 0, false},
-        {"Auto-shift timeout", &g_feat.astimeout,  50,  500, 1, false},
-        {"Caps Word timeout",  &g_feat.cwtimeout,   0,10000, 2, false},
-        {"Debounce",           &g_feat.debounce,    0,   50, 3, false},
+        {"Tapping term",       &g_global.tt,      50,  500, 0, true },
+        {"Quick tap term",     &g_feat.quicktap,   0,  500, 0, false},
+        {"Auto-shift timeout", &g_feat.astimeout, 50,  500, 1, false},
+        {"Caps Word timeout",  &g_feat.cwtimeout,  0,10000, 2, false},
     };
 
-    float checkboxX = ImGui::GetCursorPosX() + 200 + ImGui::GetStyle().ItemSpacing.x + 72 + ImGui::GetStyle().ItemSpacing.x + 40;
+    float startX    = ImGui::GetCursorPosX();
+    float labelW    = ImGui::CalcTextSize("Auto-shift timeout").x + ImGui::GetStyle().ItemSpacing.x;
+    float sliderX   = startX + labelW;
+    float checkboxX = sliderX + 200 + ImGui::GetStyle().ItemSpacing.x + 72 + ImGui::GetStyle().ItemSpacing.x + 40;
 
-    // Draw each timing parameter with its corresponding checkbox on the right
-    // (first 4 rows pair with flags 0-3; Debounce row 4 has no flag, auto_shift drawn below)
-    for (int j = 0; j < 5; j++) {
+    for (int j = 0; j < 4; j++) {
         auto& p = params[j];
         ImGui::PushID(p.label);
+        ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted(p.label);
+        ImGui::SameLine(sliderX);
         int v = (int)*p.val;
         ImGui::SetNextItemWidth(200);
         bool ch = ImGui::SliderInt("##sl", &v, p.lo, p.hi);
@@ -335,42 +374,22 @@ static void drawFeatures() {
         }
         ImGui::PopID();
 
-        // Checkbox on the right (only for first 4 flags)
-        if (j < 4) {
-            ImGui::SameLine(checkboxX);
-            bool on = !!(g_feat.flags & (1 << j));
-            if (ImGui::Checkbox(FLAG_NAMES[j], &on)) {
-                if (on) g_feat.flags |=  (uint16_t)(1 << j);
-                else    g_feat.flags &= ~(uint16_t)(1 << j);
-                try { setFlag(g_dev, j, on); } catch (...) {}
-            }
+        ImGui::SameLine(checkboxX);
+        bool on = !!(g_feat.flags & (1 << j));
+        if (ImGui::Checkbox(FLAG_NAMES[j], &on)) {
+            if (on) g_feat.flags |=  (uint16_t)(1 << j);
+            else    g_feat.flags &= ~(uint16_t)(1 << j);
+            try { setFlag(g_dev, j, on); } catch (...) {}
         }
     }
 
     // Fifth checkbox (no corresponding timing parameter)
-    ImGui::NewLine();
     ImGui::SetCursorPosX(checkboxX);
     bool on = !!(g_feat.flags & (1 << 4));
     if (ImGui::Checkbox(FLAG_NAMES[4], &on)) {
         if (on) g_feat.flags |=  (uint16_t)(1 << 4);
         else    g_feat.flags &= ~(uint16_t)(1 << 4);
         try { setFlag(g_dev, 4, on); } catch (...) {}
-    }
-
-    // Debounce method selector
-    ImGui::TextUnformatted("Debounce method");
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(200);
-    if (ImGui::BeginCombo("##dbmethod", dbMethodName(g_feat.debounceMethod))) {
-        for (uint8_t i = 0; i < 4; i++) {
-            bool sel = (g_feat.debounceMethod == i);
-            if (ImGui::Selectable(dbMethodName(i), sel)) {
-                g_feat.debounceMethod = i;
-                try { setParam(g_dev, 4, i); } catch (...) {}
-            }
-            if (sel) ImGui::SetItemDefaultFocus();
-        }
-        ImGui::EndCombo();
     }
 }
 
@@ -532,7 +551,7 @@ int gui_main() {
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
-    GLFWwindow* win = glfwCreateWindow(800, 600, "Keychron Q1 Pro Config", nullptr, nullptr);
+    GLFWwindow* win = glfwCreateWindow(800, 680, "Keychron Q1 Pro Config", nullptr, nullptr);
     if (!win) { glfwTerminate(); return 1; }
     glfwMakeContextCurrent(win);
     glfwSwapInterval(1);
