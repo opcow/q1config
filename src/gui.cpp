@@ -120,16 +120,19 @@ static void drawKeyboard() {
         }
     }
 
-    // Scale key unit to fill available width exactly
+    // Scale key unit to fill available width, leaving an equal margin on each side.
+    // The child gets zero window padding so the margin is controlled here only.
+    const float MARGIN = 8.0f;
     float availW = ImGui::GetContentRegionAvail().x;
-    float ku     = (availW - KEY_GAP - 8) / KB_W;
+    float ku     = (availW - 2 * MARGIN) / KB_W;
     float canvasW = availW;
-    float canvasH = KB_H * ku + KEY_GAP + 8;
+    float canvasH = KB_H * ku + 2 * MARGIN;
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     if (ImGui::BeginChild("##kb", {canvasW, canvasH}, ImGuiChildFlags_Border,
             ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
         ImVec2 orig = ImGui::GetCursorScreenPos();
-        orig.x += 4; orig.y += 4;
-        ImGui::Dummy({canvasW, canvasH - 8});
+        orig.x += MARGIN; orig.y += MARGIN;
+        ImGui::Dummy({canvasW, canvasH});
 
         auto* dl  = ImGui::GetWindowDrawList();
         ImGuiIO& io = ImGui::GetIO();
@@ -173,6 +176,7 @@ static void drawKeyboard() {
         }
     }
     ImGui::EndChild();
+    ImGui::PopStyleVar();
 
     // key editor popup
     if (g_editorOpen) { ImGui::OpenPopup("Key Editor"); g_editorOpen = false; }
