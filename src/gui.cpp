@@ -23,6 +23,7 @@ static const char* LAYER_NAMES[] = {"0 MAC_BASE","1 MAC_FN","2 WIN_BASE","3 WIN_
 // Slots are named TD0..TDn so a slot's name is its index (matches the firmware).
 static const char* IND_NAMES[]   = {"Caps Lock","Caps Word","WIN_FN layer"};
 static const char* FLAG_NAMES[]  = {"Caps Word","Permissive hold","Hold on other key press","Retro tapping","Auto Shift"};
+static const char* DB_METHOD_LABELS[] = {"None","Symmetric Defer","Symmetric Eager","Asymmetric Eager/Defer"};
 
 // ── app state ─────────────────────────────────────────────────────────────────
 static HidDevice g_dev;
@@ -35,9 +36,11 @@ static uint16_t g_keymap[6][16] = {};
 static TdSlot  g_td[TD_SLOT_COUNT]  = {};
 static bool    g_showAllTd = false;
 
-static GlobalState g_global = {};
-static FeatState   g_feat   = {};
-static IndState    g_ind[3] = {};
+static GlobalState  g_global = {};
+static FeatState    g_feat   = {};
+static IndState     g_ind[3] = {};
+static Combo        g_combo[COMBO_SLOT_COUNT] = {};
+static KeyOverride  g_ko[KO_SLOT_COUNT]       = {};
 
 // identify (non-blocking poll in render loop)
 static bool  g_identifying   = false;
@@ -64,12 +67,18 @@ static void loadAll() {
     try { g_feat   = getFeat(g_dev);   } catch (...) {}
     for (int i = 0; i < TD_SLOT_COUNT; i++) try { g_td[i]  = getTd(g_dev, i);  } catch (...) {}
     for (int i = 0; i < 3;  i++) try { g_ind[i] = getInd(g_dev, i); } catch (...) {}
+    for (int i = 0; i < COMBO_SLOT_COUNT; i++) try { g_combo[i] = getCombo(g_dev, i); } catch (...) {}
+    for (int i = 0; i < KO_SLOT_COUNT;    i++) try { g_ko[i]    = getKo(g_dev, i);    } catch (...) {}
     loadKeymap();
 }
+
+static bool KcPicker(const char* id, uint16_t& kc);  // fwd
+static bool KcBuilder(uint16_t& kc);                  // fwd
 
 // Tabbed category grid — call inside an open popup. Sets kc and returns true
 // (and closes the popup) when a keycode button is clicked. A filter box at the
 // top narrows the grid (within the active tab) by case-insensitive substring.
+// A final "Build" tab composes Mod-Tap / Layer-Tap / One-Shot / modded keycodes.
 static bool KcPickerBody(uint16_t& kc) {
     static char filter[32] = "";
     auto low = [](std::string s) { for (auto& c : s) if (c >= 'A' && c <= 'Z') c += 32; return s; };
@@ -113,6 +122,12 @@ static bool KcPickerBody(uint16_t& kc) {
                 ImGui::EndTabItem();
             }
         }
+        if (ImGui::BeginTabItem("Build")) {
+            ImGui::BeginChild("##build", ImVec2(0, 270));
+            changed |= KcBuilder(kc);
+            ImGui::EndChild();
+            ImGui::EndTabItem();
+        }
         ImGui::EndTabBar();
     }
     return changed;
@@ -132,6 +147,56 @@ static bool KcPicker(const char* id, uint16_t& kc) {
         ImGui::EndPopup();
     }
     return changed;
+}
+
+// Composes a Mod-Tap / Layer-Tap / One-Shot-Mod / modded keycode from a base
+// key + modifiers (or a layer). Returns true (and sets kc) when "Use" is clicked.
+static bool KcBuilder(uint16_t& kc) {
+    static int      mode  = 1;        // 0 plain,1 MT,2 LT,3 OSM,4 modded
+    static bool     m[4]  = {};       // Ctrl, Shift, Alt, Gui
+    static bool     right = false;    // right-hand mods
+    static int      layer = 0;
+    static uint16_t base  = 0x04;     // KC_A
+
+    const char* modes[] = {"Plain", "Mod-Tap (MT)", "Layer-Tap (LT)",
+                           "One-Shot Mod (OSM)", "Modded (Ctrl/Shift/…)"};
+    ImGui::SetNextItemWidth(220);
+    ImGui::Combo("Mode", &mode, modes, 5);
+
+    bool useMods = (mode == 1 || mode == 3 || mode == 4);
+    bool useBase = (mode != 3);
+
+    if (useMods) {
+        const char* mn[4] = {"Ctrl", "Shift", "Alt", "Gui"};
+        for (int i = 0; i < 4; i++) { ImGui::Checkbox(mn[i], &m[i]); ImGui::SameLine(); }
+        ImGui::Checkbox("Right-hand", &right);
+    }
+    if (mode == 2) { ImGui::SetNextItemWidth(220); ImGui::SliderInt("Layer", &layer, 0, 15); }
+    if (useBase) {
+        ImGui::TextUnformatted("Base key"); ImGui::SameLine();
+        ImGui::SetNextItemWidth(180);
+        KcPicker("##buildbase", base);
+    }
+
+    uint8_t  mods = (uint8_t)((m[0] ? 1 : 0) | (m[1] ? 2 : 0) | (m[2] ? 4 : 0) |
+                              (m[3] ? 8 : 0) | (right ? 0x10 : 0));
+    uint16_t result;
+    switch (mode) {
+        case 1:  result = (uint16_t)(QK_MOD_TAP   | (mods << 8) | (base & 0xFF)); break;
+        case 2:  result = (uint16_t)(QK_LAYER_TAP | ((layer & 0xF) << 8) | (base & 0xFF)); break;
+        case 3:  result = (uint16_t)(QK_OSM       | (mods & 0x1F)); break;
+        case 4:  result = (uint16_t)(QK_MODS      | (mods << 8) | (base & 0xFF)); break;
+        default: result = base; break;
+    }
+
+    ImGui::Separator();
+    ImGui::Text("Result: %s", nameOf(result).c_str());
+    bool applied = false;
+    if (ImGui::Button("Use this keycode")) {
+        kc = result; applied = true;
+        ImGui::CloseCurrentPopup();
+    }
+    return applied;
 }
 
 // ── keyboard panel ────────────────────────────────────────────────────────────
@@ -261,16 +326,19 @@ static void drawKeyboard() {
     ImGui::TextUnformatted("Method");
     ImGui::SameLine();
     ImGui::SetNextItemWidth(200);
-    if (ImGui::BeginCombo("##dbmethod", dbMethodName(g_feat.debounceMethod))) {
-        for (uint8_t i = 0; i < 4; i++) {
-            bool sel = (g_feat.debounceMethod == i);
-            if (ImGui::Selectable(dbMethodName(i), sel)) {
-                g_feat.debounceMethod = i;
-                try { setParam(g_dev, 4, i); } catch (...) {}
+    {
+        uint8_t m = g_feat.debounceMethod < 4 ? g_feat.debounceMethod : 0;
+        if (ImGui::BeginCombo("##dbmethod", DB_METHOD_LABELS[m])) {
+            for (uint8_t i = 0; i < 4; i++) {
+                bool sel = (g_feat.debounceMethod == i);
+                if (ImGui::Selectable(DB_METHOD_LABELS[i], sel)) {
+                    g_feat.debounceMethod = i;
+                    try { setParam(g_dev, 4, i); } catch (...) {}
+                }
+                if (sel) ImGui::SetItemDefaultFocus();
             }
-            if (sel) ImGui::SetItemDefaultFocus();
+            ImGui::EndCombo();
         }
-        ImGui::EndCombo();
     }
 
     ImGui::EndDisabled();
@@ -333,29 +401,27 @@ static void drawTapDance() {
         }
         ImGui::EndTable();
     }
-    if (ImGui::SmallButton(g_showAllTd ? "Show first 8 slots" : "Show all 64 slots"))
+    if (ImGui::SmallButton(g_showAllTd ? "Show first 8 slots" : "Show all 32 slots"))
         g_showAllTd = !g_showAllTd;
 }
 
-// ── timing & features panel ───────────────────────────────────────────────────
-static void drawFeatures() {
-    ImGui::SeparatorText("Timing & Features");
+// ── timing panel ──────────────────────────────────────────────────────────────
+static void drawTiming() {
+    ImGui::SeparatorText("Timing");
 
     struct P { const char* label; uint16_t* val; int lo, hi; uint8_t pid; bool isTT; };
     static const P params[] = {
-        {"Tapping term",       &g_global.tt,      50,  500, 0, true },
-        {"Quick tap term",     &g_feat.quicktap,   0,  500, 0, false},
-        {"Auto-shift timeout", &g_feat.astimeout, 50,  500, 1, false},
-        {"Caps Word timeout",  &g_feat.cwtimeout,  0,10000, 2, false},
+        {"Tapping term",       &g_global.tt,         50,  500, 0, true },
+        {"Quick tap term",     &g_feat.quicktap,      0,  500, 0, false},
+        {"Auto-shift timeout", &g_feat.astimeout,    50,  500, 1, false},
+        {"Caps Word timeout",  &g_feat.cwtimeout,     0,10000, 2, false},
+        {"One-shot timeout",   &g_feat.oneshotTimeout,0, 5000, 5, false},
     };
 
-    float startX    = ImGui::GetCursorPosX();
-    float labelW    = ImGui::CalcTextSize("Auto-shift timeout").x + ImGui::GetStyle().ItemSpacing.x;
-    float sliderX   = startX + labelW;
-    float checkboxX = sliderX + 200 + ImGui::GetStyle().ItemSpacing.x + 72 + ImGui::GetStyle().ItemSpacing.x + 40;
+    float startX  = ImGui::GetCursorPosX();
+    float sliderX = startX + ImGui::CalcTextSize("Auto-shift timeout").x + ImGui::GetStyle().ItemSpacing.x;
 
-    for (int j = 0; j < 4; j++) {
-        auto& p = params[j];
+    for (auto& p : params) {
         ImGui::PushID(p.label);
         ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted(p.label);
@@ -373,23 +439,137 @@ static void drawFeatures() {
             catch (...) {}
         }
         ImGui::PopID();
-
-        ImGui::SameLine(checkboxX);
-        bool on = !!(g_feat.flags & (1 << j));
-        if (ImGui::Checkbox(FLAG_NAMES[j], &on)) {
-            if (on) g_feat.flags |=  (uint16_t)(1 << j);
-            else    g_feat.flags &= ~(uint16_t)(1 << j);
-            try { setFlag(g_dev, j, on); } catch (...) {}
-        }
     }
+}
 
-    // Fifth checkbox (no corresponding timing parameter)
-    ImGui::SetCursorPosX(checkboxX);
-    bool on = !!(g_feat.flags & (1 << 4));
-    if (ImGui::Checkbox(FLAG_NAMES[4], &on)) {
-        if (on) g_feat.flags |=  (uint16_t)(1 << 4);
-        else    g_feat.flags &= ~(uint16_t)(1 << 4);
-        try { setFlag(g_dev, 4, on); } catch (...) {}
+// ── features panel (runtime feature-flag toggles) ──────────────────────────────
+static void drawFeatures() {
+    ImGui::SeparatorText("Features");
+
+    auto flagBox = [&](int bit, const char* label) {
+        bool v = !!(g_feat.flags & (1 << bit));
+        if (ImGui::Checkbox(label, &v)) {
+            if (v) g_feat.flags |=  (uint16_t)(1 << bit);
+            else   g_feat.flags &= ~(uint16_t)(1 << bit);
+            try { setFlag(g_dev, bit, v); } catch (...) {}
+        }
+    };
+
+    // Caps Word + its shift-activation sub-options, grouped together.
+    flagBox(0, FLAG_NAMES[0]);  // Caps Word (master enable)
+    if (g_feat.flags & (1 << 0)) {
+        ImGui::Indent(20.0f);
+        flagBox(5, "Double-tap Shift -> Caps Word");
+        flagBox(6, "Both Shifts -> Caps Word");
+        ImGui::Unindent(20.0f);
+    }
+    flagBox(1, FLAG_NAMES[1]);  // Permissive hold
+    flagBox(2, FLAG_NAMES[2]);  // Hold on other key press
+    flagBox(3, FLAG_NAMES[3]);  // Retro tapping
+    flagBox(4, FLAG_NAMES[4]);  // Auto Shift
+}
+
+// ── combos panel ──────────────────────────────────────────────────────────────
+static void drawCombos() {
+    ImGui::SeparatorText("Combos");
+    ImGui::TextDisabled("Press all input keys together to emit the output. Needs at least two inputs.");
+
+    if (ImGui::BeginTable("combos", COMBO_MAX_KEYS + 3,
+            ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+        ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 28);
+        for (int k = 0; k < COMBO_MAX_KEYS; k++) {
+            char h[8]; snprintf(h, sizeof(h), "Key %d", k + 1);
+            ImGui::TableSetupColumn(h, ImGuiTableColumnFlags_WidthFixed, 110);
+        }
+        ImGui::TableSetupColumn("Output",  ImGuiTableColumnFlags_WidthFixed, 110);
+        ImGui::TableSetupColumn("Enabled", ImGuiTableColumnFlags_WidthFixed, 60);
+        ImGui::TableHeadersRow();
+
+        for (int i = 0; i < COMBO_SLOT_COUNT; i++) {
+            ImGui::TableNextRow();
+            ImGui::PushID(i);
+            ImGui::TableSetColumnIndex(0);
+            ImGui::Text("%d", i);
+
+            bool dirty = false;
+            for (int k = 0; k < COMBO_MAX_KEYS; k++) {
+                ImGui::TableSetColumnIndex(1 + k);
+                ImGui::SetNextItemWidth(-1);
+                ImGui::PushID(k);
+                if (KcPicker("##ck", g_combo[i].keys[k])) dirty = true;
+                ImGui::PopID();
+            }
+            ImGui::TableSetColumnIndex(1 + COMBO_MAX_KEYS);
+            ImGui::SetNextItemWidth(-1);
+            if (KcPicker("##co", g_combo[i].output)) dirty = true;
+
+            ImGui::TableSetColumnIndex(2 + COMBO_MAX_KEYS);
+            bool en = g_combo[i].enabled;
+            if (ImGui::Checkbox("##en", &en)) { g_combo[i].enabled = en; dirty = true; }
+
+            if (dirty) try { setCombo(g_dev, i, g_combo[i]); } catch (...) {}
+            ImGui::PopID();
+        }
+        ImGui::EndTable();
+    }
+}
+
+// ── key overrides panel ─────────────────────────────────────────────────────────
+// Renders a compact 8-bit modifier-mask editor (LCtl..RGui). Returns true on change.
+static bool ModMaskEdit(const char* id, uint8_t& mask) {
+    bool changed = false;
+    const char* const* names = modMaskNames();
+    ImGui::PushID(id);
+    for (int b = 0; b < 8; b++) {
+        bool on = mask & (1 << b);
+        if (ImGui::Checkbox(names[b], &on)) {
+            if (on) mask |= (uint8_t)(1 << b); else mask &= (uint8_t)~(1 << b);
+            changed = true;
+        }
+        if (b != 3 && b != 7) ImGui::SameLine();
+    }
+    ImGui::PopID();
+    return changed;
+}
+
+static void drawKeyOverrides() {
+    ImGui::SeparatorText("Key Overrides");
+    ImGui::TextDisabled("When trigger + trigger-mods are held (and negative-mods are not), send replacement instead.");
+
+    static int sel = 0;
+    ImGui::SetNextItemWidth(120);
+    ImGui::SliderInt("Slot", &sel, 0, KO_SLOT_COUNT - 1);
+    if (sel < 0) sel = 0; if (sel >= KO_SLOT_COUNT) sel = KO_SLOT_COUNT - 1;
+    KeyOverride& k = g_ko[sel];
+    bool dirty = false;
+
+    if (ImGui::Checkbox("Enabled", &k.enabled)) dirty = true;
+
+    ImGui::TextUnformatted("Trigger"); ImGui::SameLine(140);
+    ImGui::SetNextItemWidth(180); if (KcPicker("##kotrig", k.trigger)) dirty = true;
+
+    ImGui::TextUnformatted("Replacement"); ImGui::SameLine(140);
+    ImGui::SetNextItemWidth(180); if (KcPicker("##korepl", k.replacement)) dirty = true;
+
+    ImGui::TextUnformatted("Trigger mods");    if (ModMaskEdit("tm", k.triggerMods))    dirty = true;
+    ImGui::TextUnformatted("Suppressed mods"); if (ModMaskEdit("sm", k.suppressedMods)) dirty = true;
+    ImGui::TextUnformatted("Negative mods");   if (ModMaskEdit("nm", k.negativeMods))   dirty = true;
+
+    ImGui::TextUnformatted("Layers"); ImGui::SameLine(140);
+    for (int l = 0; l < 4; l++) {
+        bool on = k.layers & (1 << l);
+        char lbl[8]; snprintf(lbl, sizeof(lbl), "%d", l);
+        if (ImGui::Checkbox(lbl, &on)) {
+            if (on) k.layers |= (uint8_t)(1 << l); else k.layers &= (uint8_t)~(1 << l);
+            dirty = true;
+        }
+        ImGui::SameLine();
+    }
+    ImGui::NewLine();
+
+    if (dirty) {
+        if (k.options == 0) k.options = 0x07;  // ko_options_all_activations default
+        try { setKo(g_dev, sel, k); } catch (...) {}
     }
 }
 
@@ -662,9 +842,33 @@ int gui_main() {
                     ImGui::EndTabItem();
                 }
                 if (ImGui::BeginTabItem("Timing")) {
+                    ImGui::BeginChild("##tab_timing");
+                    ImGui::BeginDisabled(g_identifying);
+                    drawTiming();
+                    ImGui::EndDisabled();
+                    ImGui::EndChild();
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Features")) {
                     ImGui::BeginChild("##tab_feat");
                     ImGui::BeginDisabled(g_identifying);
                     drawFeatures();
+                    ImGui::EndDisabled();
+                    ImGui::EndChild();
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Combos")) {
+                    ImGui::BeginChild("##tab_combo");
+                    ImGui::BeginDisabled(g_identifying);
+                    drawCombos();
+                    ImGui::EndDisabled();
+                    ImGui::EndChild();
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Key Overrides")) {
+                    ImGui::BeginChild("##tab_ko");
+                    ImGui::BeginDisabled(g_identifying);
+                    drawKeyOverrides();
                     ImGui::EndDisabled();
                     ImGui::EndChild();
                     ImGui::EndTabItem();

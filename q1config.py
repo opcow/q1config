@@ -26,6 +26,8 @@ Commands:
     features                            show feature flags + timeouts
     capsword <0|1>                      enable/disable Caps Word
     cwtimeout <ms>                      Caps Word idle timeout (0 = never)
+    dtapshift <0|1>                     double-tap Left Shift turns on Caps Word
+    bothshift <0|1>                     holding both shifts turns on Caps Word
     permissive <0|1>                    permissive hold
     hokp <0|1>                          hold on other key press
     retro <0|1>                         retro tapping
@@ -35,6 +37,16 @@ Commands:
     debounce <ms>                       matrix debounce time (0-255, 0 = none)
     dbmethod <name|idx>                 debounce algorithm: none, sym_defer_g,
                                           sym_eager_pk, asym_eager_defer_pk
+    oneshot [ms]                        one-shot timeout (0 = never expire)
+
+  Combos (16 slots) and key overrides (16 slots):
+    combos                              list combos
+    combo <i> off                       disable a combo
+    combo <i> <out> <k1> <k2> [k3] [k4] set a combo (>=2 input keys)
+    overrides                           list key overrides
+    override <i> off                    disable an override
+    override <i> <trig> <repl> [mods] [layers]   set an override
+                                          mods = +-joined LCtl,LSft,..; layers = e.g. 0,2
 
   Presets (JSON files in ./presets/, shared with the WebHID GUI):
     presets                             list available presets
@@ -49,19 +61,27 @@ Commands:
     mine                                apply the author's personal setup
 
 Keycodes may be names (A, F12, SCLN, COLN, HOME, ENT, CW_TOGG, LOCK, AS_TOGG...),
-shifted form S(SCLN), a tap-dance slot TD3 / TD(3), or raw numbers (0x0233 / 563).
+shifted form S(SCLN), a tap-dance slot TD3 / TD(3), mod-tap MT(LSft,A),
+layer-tap LT(1,SPC), one-shot OSM(LSft) / OSL(1), modded MOD(LCtl,A), or raw
+numbers (0x0233 / 563).
 Layers: 0 MAC_BASE  1 MAC_FN  2 WIN_BASE  3 WIN_FN. Matrix is 6 rows x 16 cols.
-Tap dance slots are named TD0..TD63 (the name is the slot index). Slots 0-7 ship
+Tap dance slots are named TD0..TD31 (the name is the slot index). Slots 0-7 ship
 with default keycodes (TD0 caps, TD1 home/end, TD2 esc, TD3 ;/:, TD4-7 F9-F12);
-8-63 start blank.
+8-31 start blank.
 """
 import sys
 import json
 from pathlib import Path
 import hid
 
-TD_SLOT_COUNT = 64
-FLAG_KEYS = ["caps_word", "permissive_hold", "hold_on_other_key", "retro_tapping", "auto_shift"]
+TD_SLOT_COUNT = 32
+COMBO_SLOT_COUNT = 16
+COMBO_MAX_KEYS = 4
+KO_SLOT_COUNT = 16
+FLAG_KEYS = ["caps_word", "permissive_hold", "hold_on_other_key", "retro_tapping", "auto_shift",
+             "caps_word_double_shift", "caps_word_both_shifts"]
+# 8-bit modifier-mask bit names for key-override mods (QMK MOD_* order)
+MOD_MASK_NAMES = ["LCtl", "LSft", "LAlt", "LGui", "RCtl", "RSft", "RAlt", "RGui"]
 PRESET_DIR = Path(__file__).resolve().parent / "presets"
 
 VID, PID = 0x3434, 0x0610
@@ -71,10 +91,12 @@ GET_GLOBAL, SET_TT, SET_TD_EN, SET_TD_MODE, RESET, GET_TD, SET_TD_KC, IDENTIFY =
     0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08
 GET_FEATURES, SET_FLAG, SET_PARAM = 0x09, 0x0A, 0x0B
 GET_INDICATOR, SET_INDICATOR = 0x0C, 0x0D
+GET_COMBO, SET_COMBO, GET_KO, SET_KO = 0x0E, 0x0F, 0x10, 0x11
 # feature_flags bit positions (must match keymap.c FF_* )
 FF_CAPS_WORD, FF_PERMISSIVE, FF_HOKP, FF_RETRO, FF_AUTOSHIFT = 0, 1, 2, 3, 4
+FF_CW_DOUBLE_SHIFT, FF_CW_BOTH_SHIFTS = 5, 6
 # SET_PARAM ids
-PARAM_QUICKTAP, PARAM_ASTIMEOUT, PARAM_CWTIMEOUT, PARAM_DEBOUNCE, PARAM_DEBOUNCE_METHOD = 0, 1, 2, 3, 4
+PARAM_QUICKTAP, PARAM_ASTIMEOUT, PARAM_CWTIMEOUT, PARAM_DEBOUNCE, PARAM_DEBOUNCE_METHOD, PARAM_ONESHOT = 0, 1, 2, 3, 4, 5
 # debounce method index -> canonical name (must match keymap.c dispatcher order)
 DEBOUNCE_METHODS = ["none", "sym_defer_g", "sym_eager_pk", "asym_eager_defer_pk"]
 # indicator indices (must match keymap.c IND_* )
@@ -124,6 +146,33 @@ NAMES.update({
 })
 CODE_TO_NAME = {v: k for k, v in NAMES.items()}
 
+# QMK keycode-range bases for MT/LT/OSM/modded builder forms.
+QK_MODS, QK_MOD_TAP, QK_LAYER_TAP, QK_OSM = 0x0100, 0x2000, 0x4000, 0x52A0
+QK_OSL = 0x5280
+
+
+def mods5_to_str(m):
+    """5-bit packed mod field (bits 0-3 CSAG, bit4 right) -> '+'-joined tokens."""
+    side = ("RCtl", "RSft", "RAlt", "RGui") if m & 0x10 else ("LCtl", "LSft", "LAlt", "LGui")
+    out = [side[i] for i in range(4) if m & (1 << i)]
+    return "+".join(out) if out else "0"
+
+
+def mods5_from_str(s):
+    if s in ("", "0"):
+        return 0
+    m = 0
+    for tok in s.split("+"):
+        t = tok.strip().upper()
+        if not t:
+            continue
+        right = t[0] == "R"
+        bit = {"CTL": 0, "SFT": 1, "ALT": 2, "GUI": 3}.get(t[1:])
+        if bit is None:
+            sys.exit(f"Unknown modifier: {tok}")
+        m |= (1 << bit) | (0x10 if right else 0)
+    return m
+
 
 def kc(token):
     t = token.upper()
@@ -131,6 +180,19 @@ def kc(token):
         t = t[3:]
     if t.startswith("S(") and t.endswith(")"):
         return 0x0200 | kc(t[2:-1])
+    if t.startswith("MT(") and t.endswith(")"):
+        mods, base = t[3:-1].split(",", 1)
+        return QK_MOD_TAP | (mods5_from_str(mods) << 8) | (kc(base) & 0xFF)
+    if t.startswith("LT(") and t.endswith(")"):
+        layer, base = t[3:-1].split(",", 1)
+        return QK_LAYER_TAP | ((int(layer) & 0xF) << 8) | (kc(base) & 0xFF)
+    if t.startswith("OSM(") and t.endswith(")"):
+        return QK_OSM | (mods5_from_str(t[4:-1]) & 0x1F)
+    if t.startswith("OSL(") and t.endswith(")"):
+        return QK_OSL | (int(t[4:-1]) & 0x1F)
+    if t.startswith("MOD(") and t.endswith(")"):
+        mods, base = t[4:-1].split(",", 1)
+        return QK_MODS | (mods5_from_str(mods) << 8) | (kc(base) & 0xFF)
     if t.startswith("TD(") and t.endswith(")"):
         return QK_TAP_DANCE | int(t[3:-1])
     if t.startswith("TD") and t[2:].isdigit():
@@ -147,7 +209,31 @@ def kc(token):
 def name_of(code):
     if QK_TAP_DANCE <= code <= QK_TAP_DANCE | 0xFF:
         return f"TD{code & 0xFF}"
-    return CODE_TO_NAME.get(code, f"0x{code:04X}")
+    if 0x5280 <= code <= 0x529F:
+        return f"OSL({code & 0x1F})"
+    if 0x52A0 <= code <= 0x52BF:
+        return f"OSM({mods5_to_str(code & 0x1F)})"
+    if code in CODE_TO_NAME:
+        return CODE_TO_NAME[code]
+    if QK_MOD_TAP <= code <= 0x3FFF:
+        return f"MT({mods5_to_str((code >> 8) & 0x1F)},{name_of(code & 0xFF)})"
+    if QK_LAYER_TAP <= code <= 0x4FFF:
+        return f"LT({(code >> 8) & 0xF},{name_of(code & 0xFF)})"
+    if QK_MODS <= code <= 0x1FFF:
+        return f"MOD({mods5_to_str((code >> 8) & 0x1F)},{name_of(code & 0xFF)})"
+    return f"0x{code:04X}"
+
+
+def modmask_to_list(mask):
+    return [MOD_MASK_NAMES[b] for b in range(8) if mask & (1 << b)]
+
+
+def modmask_from_list(names):
+    m = 0
+    for nm in names:
+        if nm in MOD_MASK_NAMES:
+            m |= 1 << MOD_MASK_NAMES.index(nm)
+    return m
 
 
 def open_dev():
@@ -214,13 +300,16 @@ def show_features(h):
     cwtimeout = r[8] | (r[9] << 8)
     debounce = r[10]
     dbmethod = r[11]
+    oneshot = r[12] | (r[13] << 8)
     def on(b):
         return "on" if flags & (1 << b) else "off"
-    print(f"caps_word={on(FF_CAPS_WORD)}  cw_timeout={cwtimeout}")
+    print(f"caps_word={on(FF_CAPS_WORD)}  cw_timeout={cwtimeout}  "
+          f"double_shift={on(FF_CW_DOUBLE_SHIFT)}  both_shifts={on(FF_CW_BOTH_SHIFTS)}")
     print(f"permissive_hold={on(FF_PERMISSIVE)}  hold_on_other_key={on(FF_HOKP)}  "
           f"retro={on(FF_RETRO)}  quick_tap={quicktap}")
     print(f"auto_shift={on(FF_AUTOSHIFT)}  as_timeout={astimeout}")
     print(f"debounce={debounce}ms  method={dbmethod_name(dbmethod)}")
+    print(f"oneshot_timeout={oneshot}")
 
 
 def dbmethod_name(i):
@@ -264,6 +353,54 @@ def set_indicator(h, i, enabled, rgb):
     send(h, [CMD, SET_INDICATOR, i, 1 if enabled else 0, rgb[0], rgb[1], rgb[2]])
 
 
+# ----- Combos & key overrides -----
+def get_combo(h, i):
+    r = send(h, [CMD, GET_COMBO, i])
+    keys = [r[3 + k * 2] | (r[4 + k * 2] << 8) for k in range(COMBO_MAX_KEYS)]
+    return {"keys": keys, "output": r[11] | (r[12] << 8), "enabled": bool(r[13])}
+
+
+def set_combo(h, i, keys, output, enabled):
+    p = [CMD, SET_COMBO, i]
+    for k in range(COMBO_MAX_KEYS):
+        v = keys[k] if k < len(keys) else 0
+        p += [v & 0xFF, (v >> 8) & 0xFF]
+    p += [output & 0xFF, (output >> 8) & 0xFF, 1 if enabled else 0]
+    send(h, p)
+
+
+def get_ko(h, i):
+    r = send(h, [CMD, GET_KO, i])
+    return {
+        "trigger": r[3] | (r[4] << 8), "replacement": r[5] | (r[6] << 8),
+        "trigger_mods": r[7], "suppressed_mods": r[8], "negative_mods": r[9],
+        "layers": r[10], "options": r[11], "enabled": bool(r[12]),
+    }
+
+
+def set_ko(h, i, k):
+    send(h, [CMD, SET_KO, i,
+             k["trigger"] & 0xFF, (k["trigger"] >> 8) & 0xFF,
+             k["replacement"] & 0xFF, (k["replacement"] >> 8) & 0xFF,
+             k["trigger_mods"] & 0xFF, k["suppressed_mods"] & 0xFF,
+             k["negative_mods"] & 0xFF, k["layers"] & 0xFF, k["options"] & 0xFF,
+             1 if k["enabled"] else 0])
+
+
+def show_combo(h, i):
+    c = get_combo(h, i)
+    keys = " ".join(name_of(x) for x in c["keys"])
+    print(f"  [{i:>2}] {keys:<28} -> {name_of(c['output']):<8} {'on' if c['enabled'] else 'off'}")
+
+
+def show_override(h, i):
+    k = get_ko(h, i)
+    mods = "+".join(modmask_to_list(k["trigger_mods"])) or "-"
+    layers = ",".join(str(l) for l in range(8) if k["layers"] & (1 << l)) or "-"
+    print(f"  [{i:>2}] {name_of(k['trigger']):<8} -> {name_of(k['replacement']):<8} "
+          f"mods={mods:<14} layers={layers:<6} {'on' if k['enabled'] else 'off'}")
+
+
 # ----- Presets (filesystem, shared JSON schema with the WebHID GUI) -----
 def read_config(h):
     """Snapshot the device's full 0xAC config into a preset dict (keycode names)."""
@@ -278,8 +415,11 @@ def read_config(h):
         "caps_word_timeout": f[8] | (f[9] << 8),
         "debounce_time": f[10],
         "debounce_method": dbmethod_name(f[11]),
+        "oneshot_timeout": f[12] | (f[13] << 8),
         "flags": {key: bool(flags & (1 << bit)) for bit, key in enumerate(FLAG_KEYS)},
         "tap_dance": [],
+        "combos": [],
+        "key_overrides": [],
         "indicators": [],
     }
     for i in range(TD_SLOT_COUNT):
@@ -290,12 +430,37 @@ def read_config(h):
             "mode": "hold" if r[8] else "double",
             "enabled": bool(r[7]),
         })
+    for i in range(COMBO_SLOT_COUNT):
+        c = get_combo(h, i)
+        preset["combos"].append({
+            "keys": [name_of(x) for x in c["keys"]],
+            "output": name_of(c["output"]),
+            "enabled": c["enabled"],
+        })
+    for i in range(KO_SLOT_COUNT):
+        k = get_ko(h, i)
+        preset["key_overrides"].append({
+            "trigger": name_of(k["trigger"]),
+            "replacement": name_of(k["replacement"]),
+            "trigger_mods": modmask_to_list(k["trigger_mods"]),
+            "suppressed_mods": modmask_to_list(k["suppressed_mods"]),
+            "negative_mods": modmask_to_list(k["negative_mods"]),
+            "layers": [l for l in range(8) if k["layers"] & (1 << l)],
+            "options": k["options"],
+            "enabled": k["enabled"],
+        })
     for i in range(len(IND_NAMES)):
         r = send(h, [CMD, GET_INDICATOR, i])
         preset["indicators"].append({
             "enabled": bool(r[3]),
             "color": f"#{r[4]:02X}{r[5]:02X}{r[6]:02X}",
         })
+    # Full dynamic keymap (all layers, row-major) as keycode names, so a preset
+    # can reproduce key->TD (and any other) assignments on stock firmware.
+    preset["keymap"] = [
+        [name_of(via_get_keycode(h, l, rw, c)) for rw in range(ROWS) for c in range(COLS)]
+        for l in range(LAYERS)
+    ]
     return preset
 
 
@@ -313,7 +478,8 @@ def write_config(h, preset):
     if chg("tt", cur["tapping_term"], preset["tapping_term"]):
         send(h, [CMD, SET_TT, preset["tapping_term"] & 0xFF, (preset["tapping_term"] >> 8) & 0xFF])
     for pid, key in ((PARAM_QUICKTAP, "quick_tap_term"), (PARAM_ASTIMEOUT, "autoshift_timeout"),
-                     (PARAM_CWTIMEOUT, "caps_word_timeout"), (PARAM_DEBOUNCE, "debounce_time")):
+                     (PARAM_CWTIMEOUT, "caps_word_timeout"), (PARAM_DEBOUNCE, "debounce_time"),
+                     (PARAM_ONESHOT, "oneshot_timeout")):
         if key in preset and chg(key, cur[key], preset[key]):
             set_param(h, pid, preset[key])
     if "debounce_method" in preset and chg("debounce_method", cur["debounce_method"], preset["debounce_method"]):
@@ -331,12 +497,33 @@ def write_config(h, preset):
             send(h, [CMD, SET_TD_MODE, i, 1 if td["mode"] == "hold" else 0])
         if chg("en", c["enabled"], td["enabled"]):
             send(h, [CMD, SET_TD_EN, i, 1 if td["enabled"] else 0])
+    for i, cb in enumerate(preset.get("combos", [])[:COMBO_SLOT_COUNT]):
+        if cur["combos"][i] != cb:
+            n += 1
+            set_combo(h, i, [kc(x) for x in cb["keys"]], kc(cb["output"]), cb.get("enabled", False))
+    for i, ko in enumerate(preset.get("key_overrides", [])[:KO_SLOT_COUNT]):
+        if cur["key_overrides"][i] != ko:
+            n += 1
+            set_ko(h, i, {
+                "trigger": kc(ko["trigger"]), "replacement": kc(ko["replacement"]),
+                "trigger_mods": modmask_from_list(ko.get("trigger_mods", [])),
+                "suppressed_mods": modmask_from_list(ko.get("suppressed_mods", [])),
+                "negative_mods": modmask_from_list(ko.get("negative_mods", [])),
+                "layers": sum(1 << l for l in ko.get("layers", [])),
+                "options": ko.get("options", 7), "enabled": ko.get("enabled", False),
+            })
     for i, ind in enumerate(preset["indicators"][:len(IND_NAMES)]):
         c = cur["indicators"][i]
         if c["enabled"] != ind["enabled"] or c["color"].upper() != ind["color"].upper():
             n += 1
             r, g, b = parse_color([ind["color"]])
             set_indicator(h, i, ind["enabled"], (r, g, b))
+    if "keymap" in preset:
+        for l, layer in enumerate(preset["keymap"][:LAYERS]):
+            for i, name in enumerate(layer[:ROWS * COLS]):
+                if cur["keymap"][l][i] != name:
+                    n += 1
+                    via_set_keycode(h, l, i // COLS, i % COLS, kc(name))
     return n
 
 
@@ -450,6 +637,10 @@ def main():
         set_flag(h, FF_RETRO, a[1]); show_features(h)
     elif op == "autoshift":
         set_flag(h, FF_AUTOSHIFT, a[1]); show_features(h)
+    elif op == "dtapshift":
+        set_flag(h, FF_CW_DOUBLE_SHIFT, a[1]); show_features(h)
+    elif op == "bothshift":
+        set_flag(h, FF_CW_BOTH_SHIFTS, a[1]); show_features(h)
     elif op == "cwtimeout":
         set_param(h, PARAM_CWTIMEOUT, a[1]); show_features(h)
     elif op == "quicktap":
@@ -460,6 +651,46 @@ def main():
         set_param(h, PARAM_DEBOUNCE, a[1]); show_features(h)
     elif op == "dbmethod":
         set_param(h, PARAM_DEBOUNCE_METHOD, dbmethod_index(a[1])); show_features(h)
+    elif op == "oneshot":
+        if len(a) > 1:
+            set_param(h, PARAM_ONESHOT, a[1])
+        show_features(h)
+    elif op == "combos":
+        for i in range(COMBO_SLOT_COUNT):
+            show_combo(h, i)
+    elif op == "combo":
+        i = int(a[1])
+        if len(a) > 2 and a[2].lower() == "off":
+            c = get_combo(h, i)
+            set_combo(h, i, c["keys"], c["output"], False)
+        else:
+            # combo <i> <out> <k1> <k2> [k3] [k4]
+            if len(a) < 5:
+                sys.exit("usage: combo <i> off|<out> <k1> <k2> [k3] [k4]")
+            out = kc(a[2])
+            keys = [kc(x) for x in a[3:3 + COMBO_MAX_KEYS]]
+            set_combo(h, i, keys, out, True)
+        show_combo(h, i)
+    elif op == "overrides":
+        for i in range(KO_SLOT_COUNT):
+            show_override(h, i)
+    elif op == "override":
+        i = int(a[1])
+        if len(a) > 2 and a[2].lower() == "off":
+            k = get_ko(h, i); k["enabled"] = False
+            set_ko(h, i, k)
+        else:
+            # override <i> <trig> <repl> [mods] [layers]
+            if len(a) < 4:
+                sys.exit("usage: override <i> off|<trig> <repl> [mods] [layers]")
+            mods = modmask_from_list(a[4].split("+")) if len(a) > 4 else 0
+            layers = sum(1 << int(l) for l in a[5].split(",")) if len(a) > 5 else 0x0F
+            set_ko(h, i, {
+                "trigger": kc(a[2]), "replacement": kc(a[3]),
+                "trigger_mods": mods, "suppressed_mods": 0, "negative_mods": 0,
+                "layers": layers, "options": 7, "enabled": True,
+            })
+        show_override(h, i)
     elif op == "indicators":
         for i in range(len(IND_NAMES)):
             show_indicator(h, i)

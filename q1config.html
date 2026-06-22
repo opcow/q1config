@@ -93,11 +93,30 @@
     <table id="tdtable"><thead><tr>
       <th>#</th><th>name</th><th>tap</th><th>secondary</th><th>mode</th><th>enabled</th>
     </tr></thead><tbody></tbody></table>
-    <div class="hint" style="margin-top:6px"><button id="showall">Show all 64 slots</button></div>
+    <div class="hint" style="margin-top:6px"><button id="showall">Show all 32 slots</button></div>
   </div>
 
-  <h2>Timing &amp; features</h2>
-  <div class="panel grid2" id="features"></div>
+  <h2>Timing</h2>
+  <div class="panel" id="timing"></div>
+
+  <h2>Features</h2>
+  <div class="panel" id="features"></div>
+
+  <h2>Combos</h2>
+  <div class="panel">
+    <div class="hint" style="margin-bottom:6px">Press all input keys together to emit the output. Needs at least two inputs.</div>
+    <table id="combotable"><thead><tr>
+      <th>#</th><th>key 1</th><th>key 2</th><th>key 3</th><th>key 4</th><th>output</th><th>on</th>
+    </tr></thead><tbody></tbody></table>
+  </div>
+
+  <h2>Key overrides</h2>
+  <div class="panel">
+    <div class="hint" style="margin-bottom:6px">When trigger + trigger-mods are held (and negative-mods are not), send replacement instead.</div>
+    <table id="kotable"><thead><tr>
+      <th>#</th><th>trigger</th><th>replacement</th><th>trigger mods</th><th>layers</th><th>on</th>
+    </tr></thead><tbody></tbody></table>
+  </div>
 
   <h2>Indicators</h2>
   <div class="panel" id="indicators"></div>
@@ -159,7 +178,24 @@ Object.assign(KC,{NK_TOGG:0x7013});
 // Layer-switch keycodes (stride 0x20, layer in low bits); first 8 for the picker
 for(let l=0;l<8;l++){ KC["TO("+l+")"]=0x5200|l; KC["MO("+l+")"]=0x5220|l;
   KC["DF("+l+")"]=0x5240|l; KC["TG("+l+")"]=0x5260|l; }
-for(let i=0;i<64;i++)KC["TD"+i]=0x5700|i;
+// One-shot keycodes for the picker (the Build forms / nameOf cover the full range)
+for(let i=0;i<4;i++) KC["OSM("+["LCTL","LSFT","LALT","LGUI"][i]+")"]=0x52A0|(1<<i);
+for(let l=0;l<8;l++) KC["OSL("+l+")"]=0x5280|l;
+for(let i=0;i<32;i++)KC["TD"+i]=0x5700|i;
+// QMK keycode-range bases for MT/LT/OSM/modded forms.
+const QK_MODS=0x0100, QK_MOD_TAP=0x2000, QK_LAYER_TAP=0x4000, QK_OSM=0x52A0;
+// 8-bit modifier-mask bit names for key-override mods (QMK MOD_* order).
+const MOD_MASK_NAMES=["LCtl","LSft","LAlt","LGui","RCtl","RSft","RAlt","RGui"];
+// 5-bit packed mod field (bits 0-3 CSAG, bit4 right) <-> "+"-joined tokens.
+function mods5ToStr(m){ const s=(m&0x10)?["RCtl","RSft","RAlt","RGui"]:["LCtl","LSft","LAlt","LGui"];
+  const o=[]; for(let i=0;i<4;i++) if(m&(1<<i)) o.push(s[i]); return o.length?o.join("+"):"0"; }
+function mods5FromStr(str){ if(!str||str==="0") return 0; let m=0;
+  for(const tok of str.split("+")){ const t=tok.trim().toUpperCase(); if(!t) continue;
+    const right=t[0]==="R"; const bit={CTL:0,SFT:1,ALT:2,GUI:3}[t.slice(1)];
+    if(bit===undefined) throw new Error("Unknown modifier: "+tok);
+    m|=(1<<bit)|(right?0x10:0); } return m; }
+function maskToList(mask){ const o=[]; for(let b=0;b<8;b++) if(mask&(1<<b)) o.push(MOD_MASK_NAMES[b]); return o; }
+function listToMask(arr){ let m=0; for(const nm of arr||[]){ const i=MOD_MASK_NAMES.indexOf(nm); if(i>=0) m|=1<<i; } return m; }
 const ENTRIES=[]; const seenCode=new Set();
 for(const [n,c] of Object.entries(KC)){ if(seenCode.has(c))continue; seenCode.add(c); ENTRIES.push([n,c]); }
 function nameOf(code){ if(code>=0x5700&&code<=0x57FF) return "TD"+(code&0xFF);
@@ -169,8 +205,12 @@ function nameOf(code){ if(code>=0x5700&&code<=0x57FF) return "TD"+(code&0xFF);
     case 0x5240: return "DF("+(code&0x1F)+")";
     case 0x5260: return "TG("+(code&0x1F)+")";
     case 0x5280: return "OSL("+(code&0x1F)+")";
+    case 0x52A0: return "OSM("+mods5ToStr(code&0x1F)+")";
     case 0x52C0: return "TT("+(code&0x1F)+")"; }
   for(const [n,c] of ENTRIES) if(c===code) return n;
+  if(code>=QK_MOD_TAP&&code<=0x3FFF) return "MT("+mods5ToStr((code>>8)&0x1F)+","+nameOf(code&0xFF)+")";
+  if(code>=QK_LAYER_TAP&&code<=0x4FFF) return "LT("+((code>>8)&0xF)+","+nameOf(code&0xFF)+")";
+  if(code>=QK_MODS&&code<=0x1FFF) return "MOD("+mods5ToStr((code>>8)&0x1F)+","+nameOf(code&0xFF)+")";
   return "0x"+code.toString(16).padStart(4,"0").toUpperCase(); }
 // VIA-style category from a keycode's value range; mirrors src/keycodes.cpp.
 function categoryOf(c){
@@ -211,6 +251,8 @@ function pickKeycode(cur, title){
       if(cat===curCat){ t.className="on"; curEntries=cat[1]; } });
     filt.value=""; renderGrid();
     filt.oninput=renderGrid;
+    // Enter accepts a typed keycode form (e.g. MT(LSft,A), LT(1,SPC), OSM(LSft)).
+    filt.onkeydown=e=>{ if(e.key==="Enter"){ try{ close(kcParse(filt.value)); }catch(_){} } };
     $("#kccancel").onclick=()=>close(null);
     ov.onclick=e=>{ if(e.target===ov) close(null); };
     ov.classList.add("show");
@@ -248,7 +290,7 @@ const LAYOUT=[
  [5,11,11,5.25,1],[5,12,12,5.25,1],[5,13,13.25,5.5,1],[5,14,14.25,5.5,1],[5,15,15.25,5.5,1],
 ];
 // Slots are named TD0..TD63 so a slot's name is its index (matches the firmware).
-const TD_NAMES=[]; for(let i=0;i<64;i++) TD_NAMES.push("TD"+i);
+const TD_NAMES=[]; for(let i=0;i<32;i++) TD_NAMES.push("TD"+i);
 
 //// ---- transport ----
 const CMD=0xAC;
@@ -273,30 +315,39 @@ function xfer(payload){
 const u16=(d,o)=>d[o]|(d[o+1]<<8);
 
 // 0xAC commands
-const getGlobal =()=>xfer([CMD,0x01]).then(d=>({tt:u16(d,2),slots:d[4]}));
+const getGlobal =()=>xfer([CMD,0x01]).then(d=>({tt:u16(d,2),slots:d[4],comboSlots:d[21],koSlots:d[22]}));
 const setTT     =v=>xfer([CMD,0x02,v&0xff,(v>>8)&0xff]);
 const setTdEn   =(i,on)=>xfer([CMD,0x03,i,on?1:0]);
 const setTdMode =(i,m)=>xfer([CMD,0x04,i,m]);
 const resetCfg  =()=>xfer([CMD,0x05]);
 const getTd     =i=>xfer([CMD,0x06,i]).then(d=>({tap:u16(d,3),sec:u16(d,5),en:d[7],mode:d[8]}));
 const setTdKc   =(i,tap,sec)=>xfer([CMD,0x07,i,tap&0xff,(tap>>8)&0xff,sec&0xff,(sec>>8)&0xff]);
-const getFeat   =()=>xfer([CMD,0x09]).then(d=>({flags:u16(d,2),quicktap:u16(d,4),astimeout:u16(d,6),cwtimeout:u16(d,8),debounce:d[10],dbmethod:d[11]}));
+const getFeat   =()=>xfer([CMD,0x09]).then(d=>({flags:u16(d,2),quicktap:u16(d,4),astimeout:u16(d,6),cwtimeout:u16(d,8),debounce:d[10],dbmethod:d[11],oneshot:u16(d,12)}));
 const setFlag   =(bit,on)=>xfer([CMD,0x0A,bit,on?1:0]);
 const setParam  =(pid,v)=>xfer([CMD,0x0B,pid,v&0xff,(v>>8)&0xff]);
 const getInd    =i=>xfer([CMD,0x0C,i]).then(d=>({en:d[3],r:d[4],g:d[5],b:d[6]}));
 const setInd    =(i,en,r,g,b)=>xfer([CMD,0x0D,i,en?1:0,r,g,b]);
+const getCombo  =i=>xfer([CMD,0x0E,i]).then(d=>({keys:[u16(d,3),u16(d,5),u16(d,7),u16(d,9)],output:u16(d,11),enabled:!!d[13]}));
+const setCombo  =(i,c)=>xfer([CMD,0x0F,i,c.keys[0]&0xff,(c.keys[0]>>8)&0xff,c.keys[1]&0xff,(c.keys[1]>>8)&0xff,
+                              c.keys[2]&0xff,(c.keys[2]>>8)&0xff,c.keys[3]&0xff,(c.keys[3]>>8)&0xff,
+                              c.output&0xff,(c.output>>8)&0xff,c.enabled?1:0]);
+const getKo     =i=>xfer([CMD,0x10,i]).then(d=>({trigger:u16(d,3),replacement:u16(d,5),triggerMods:d[7],
+                              suppressedMods:d[8],negativeMods:d[9],layers:d[10],options:d[11],enabled:!!d[12]}));
+const setKo     =(i,k)=>xfer([CMD,0x11,i,k.trigger&0xff,(k.trigger>>8)&0xff,k.replacement&0xff,(k.replacement>>8)&0xff,
+                              k.triggerMods&0xff,k.suppressedMods&0xff,k.negativeMods&0xff,k.layers&0xff,k.options&0xff,k.enabled?1:0]);
 // VIA dynamic keymap (big-endian keycode)
 const viaGet    =(l,r,c)=>xfer([0x04,l,r,c]).then(d=>(d[4]<<8)|d[5]);
 const viaSet    =(l,r,c,kc)=>xfer([0x05,l,r,c,(kc>>8)&0xff,kc&0xff]);
 const viaKmReset=()=>xfer([0x06]);
 
-const FF={CAPS_WORD:0,PERMISSIVE:1,HOKP:2,RETRO:3,AUTOSHIFT:4};
-const PARAM={QUICKTAP:0,ASTIMEOUT:1,CWTIMEOUT:2,DEBOUNCE:3,DEBOUNCE_METHOD:4};
+const FF={CAPS_WORD:0,PERMISSIVE:1,HOKP:2,RETRO:3,AUTOSHIFT:4,CW_DOUBLE_SHIFT:5,CW_BOTH_SHIFTS:6};
+const PARAM={QUICKTAP:0,ASTIMEOUT:1,CWTIMEOUT:2,DEBOUNCE:3,DEBOUNCE_METHOD:4,ONESHOT:5};
 // debounce method index -> canonical name (must match keymap.c dispatcher order)
 const DEBOUNCE_METHODS=["none","sym_defer_g","sym_eager_pk","asym_eager_defer_pk"];
 
 //// ---- UI ----
 const U=42, GAP=4;
+const ROWS=6, COLS=16, LAYERS=4;  // dynamic-keymap matrix dimensions
 let curLayer=2, showAll=false;
 const $=s=>document.querySelector(s);
 
@@ -316,7 +367,8 @@ async function connect(){
 
 async function refreshAll(){
   buildLayers(); await refreshKeyboard();
-  await buildTapDance(); await buildFeatures(); await buildIndicators();
+  await buildTapDance(); await buildTiming(); await buildFeatures(); await buildCombos();
+  await buildKeyOverrides(); await buildIndicators();
 }
 
 function buildLayers(){
@@ -367,7 +419,7 @@ $("#identify")?.addEventListener("click",async()=>{
 
 async function buildTapDance(){
   const tb=$("#tdtable tbody"); tb.innerHTML="";
-  const n=showAll?64:8;
+  const n=showAll?32:8;
   for(let i=0;i<n;i++){
     const t=await getTd(i);
     const tr=document.createElement("tr");
@@ -390,50 +442,61 @@ async function buildTapDance(){
   }
 }
 $("#showall").addEventListener("click",async()=>{ showAll=!showAll;
-  $("#showall").textContent=showAll?"Show first 8 slots":"Show all 64 slots"; await buildTapDance(); });
+  $("#showall").textContent=showAll?"Show first 8 slots":"Show all 32 slots"; await buildTapDance(); });
 
-async function buildFeatures(){
+async function buildTiming(){
   const g=await getGlobal(); const f=await getFeat();
-  const numRow=(label,val,min,max,onset)=>`
+  const numRow=(label,val,min,max)=>`
     <div class="row"><label>${label}</label>
       <input type="range" min="${min}" max="${max}" value="${val}" data-k="${label}">
       <input type="number" min="${min}" max="${max}" value="${val}" data-k="${label}" style="width:80px">
       <span class="hint">ms</span></div>`;
-  const chk=(label,bit,on)=>`<div class="row"><label>${label}</label>
-      <input type="checkbox" data-bit="${bit}" ${on?"checked":""}></div>`;
-  $("#features").innerHTML=`
-    <div>
-      ${numRow("Tapping term",g.tt,50,500)}
-      ${numRow("Quick tap term",f.quicktap,0,500)}
-      ${numRow("Auto-shift timeout",f.astimeout,50,500)}
-      ${numRow("Caps Word timeout",f.cwtimeout,0,10000)}
-      ${numRow("Debounce",f.debounce,0,50)}
-      <div class="row"><label>Debounce method</label>
-        <select id="dbmethod">${DEBOUNCE_METHODS.map((m,i)=>
-          `<option value="${i}"${i===f.dbmethod?" selected":""}>${m}</option>`).join("")}</select></div>
-    </div>
-    <div class="pillrow" style="flex-direction:column">
-      ${chk("Caps Word",FF.CAPS_WORD,f.flags&(1<<FF.CAPS_WORD))}
-      ${chk("Permissive hold",FF.PERMISSIVE,f.flags&(1<<FF.PERMISSIVE))}
-      ${chk("Hold on other key press",FF.HOKP,f.flags&(1<<FF.HOKP))}
-      ${chk("Retro tapping",FF.RETRO,f.flags&(1<<FF.RETRO))}
-      ${chk("Auto Shift",FF.AUTOSHIFT,f.flags&(1<<FF.AUTOSHIFT))}
-    </div>`;
+  $("#timing").innerHTML=`
+    ${numRow("Tapping term",g.tt,50,500)}
+    ${numRow("Quick tap term",f.quicktap,0,500)}
+    ${numRow("Auto-shift timeout",f.astimeout,50,500)}
+    ${numRow("Caps Word timeout",f.cwtimeout,0,10000)}
+    ${numRow("One-shot timeout",f.oneshot,0,5000)}
+    ${numRow("Debounce",f.debounce,0,50)}
+    <div class="row"><label>Debounce method</label>
+      <select id="dbmethod">${DEBOUNCE_METHODS.map((m,i)=>
+        `<option value="${i}"${i===f.dbmethod?" selected":""}>${m}</option>`).join("")}</select></div>`;
   const apply=(label,v)=>{
     if(label==="Tapping term") return setTT(v);
     if(label==="Quick tap term") return setParam(PARAM.QUICKTAP,v);
     if(label==="Auto-shift timeout") return setParam(PARAM.ASTIMEOUT,v);
     if(label==="Caps Word timeout") return setParam(PARAM.CWTIMEOUT,v);
+    if(label==="One-shot timeout") return setParam(PARAM.ONESHOT,v);
     if(label==="Debounce") return setParam(PARAM.DEBOUNCE,v);
   };
-  $("#features").querySelectorAll("input[data-k]").forEach(inp=>{
+  $("#timing").querySelectorAll("input[data-k]").forEach(inp=>{
     inp.oninput=()=>{ const k=inp.dataset.k;
-      $("#features").querySelectorAll(`input[data-k="${k}"]`).forEach(o=>{if(o!==inp)o.value=inp.value;}); };
+      $("#timing").querySelectorAll(`input[data-k="${k}"]`).forEach(o=>{if(o!==inp)o.value=inp.value;}); };
     inp.onchange=()=>apply(inp.dataset.k,+inp.value);
   });
-  $("#features").querySelectorAll("input[data-bit]").forEach(c=>
-    c.onchange=()=>setFlag(+c.dataset.bit,c.checked));
   $("#dbmethod").onchange=e=>setParam(PARAM.DEBOUNCE_METHOD,+e.target.value);
+}
+
+async function buildFeatures(){
+  const f=await getFeat();
+  const chk=(label,bit,on)=>`<div class="row"><label>${label}</label>
+      <input type="checkbox" data-bit="${bit}" ${on?"checked":""}></div>`;
+  $("#features").innerHTML=`
+    <div class="pillrow" style="flex-direction:column">
+      ${chk("Caps Word",FF.CAPS_WORD,f.flags&(1<<FF.CAPS_WORD))}
+      ${(f.flags&(1<<FF.CAPS_WORD)) ? `<div style="margin-left:18px">
+        ${chk("↳ Double-tap Shift → Caps Word",FF.CW_DOUBLE_SHIFT,f.flags&(1<<FF.CW_DOUBLE_SHIFT))}
+        ${chk("↳ Both Shifts → Caps Word",FF.CW_BOTH_SHIFTS,f.flags&(1<<FF.CW_BOTH_SHIFTS))}
+      </div>` : ""}
+      ${chk("Permissive hold",FF.PERMISSIVE,f.flags&(1<<FF.PERMISSIVE))}
+      ${chk("Hold on other key press",FF.HOKP,f.flags&(1<<FF.HOKP))}
+      ${chk("Retro tapping",FF.RETRO,f.flags&(1<<FF.RETRO))}
+      ${chk("Auto Shift",FF.AUTOSHIFT,f.flags&(1<<FF.AUTOSHIFT))}
+    </div>`;
+  $("#features").querySelectorAll("input[data-bit]").forEach(c=>
+    c.onchange=async()=>{ await setFlag(+c.dataset.bit,c.checked);
+      // Toggling Caps Word shows/hides its shift-activation sub-options.
+      if(+c.dataset.bit===FF.CAPS_WORD) buildFeatures(); });
 }
 
 const IND_NAMES=["Caps Lock","Caps Word","WIN_FN layer"];
@@ -454,12 +517,69 @@ async function buildIndicators(){
   }
 }
 
+async function buildCombos(){
+  const tb=$("#combotable tbody"); tb.innerHTML="";
+  for(let i=0;i<16;i++){
+    const c=await getCombo(i);
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${i}</td><td class="k0"></td><td class="k1"></td><td class="k2"></td>
+      <td class="k3"></td><td class="out"></td>
+      <td><input type="checkbox" class="en" ${c.enabled?"checked":""}></td>`;
+    tb.appendChild(tr);
+    const en=tr.querySelector(".en");
+    const keyBtn=[]; const state={keys:[...c.keys],output:c.output};
+    const save=()=>setCombo(i,{keys:state.keys,output:state.output,enabled:en.checked});
+    for(let k=0;k<4;k++){
+      const b=kcField(c.keys[k],`Combo ${i} key ${k+1}`,v=>{state.keys[k]=v;save();});
+      tr.querySelector(".k"+k).appendChild(b); keyBtn.push(b);
+    }
+    tr.querySelector(".out").appendChild(kcField(c.output,`Combo ${i} output`,v=>{state.output=v;save();}));
+    en.onchange=save;
+  }
+}
+
+async function buildKeyOverrides(){
+  const tb=$("#kotable tbody"); tb.innerHTML="";
+  for(let i=0;i<16;i++){
+    const k=await getKo(i);
+    const tr=document.createElement("tr");
+    const modsStr=maskToList(k.triggerMods).join("+");
+    const layStr=[0,1,2,3,4,5,6,7].filter(l=>k.layers&(1<<l)).join(",");
+    tr.innerHTML=`<td>${i}</td><td class="trig"></td><td class="repl"></td>
+      <td><input type="text" class="mods" value="${modsStr}" placeholder="LSft+LCtl" style="width:120px"></td>
+      <td><input type="text" class="lay" value="${layStr}" placeholder="0,2" style="width:70px"></td>
+      <td><input type="checkbox" class="en" ${k.enabled?"checked":""}></td>`;
+    tb.appendChild(tr);
+    const en=tr.querySelector(".en"), mods=tr.querySelector(".mods"), lay=tr.querySelector(".lay");
+    const state={trigger:k.trigger,replacement:k.replacement,suppressedMods:k.suppressedMods,
+                 negativeMods:k.negativeMods,options:k.options||7};
+    const parseMods=s=>{ let m=0; for(const t of s.split("+")){ const i=MOD_MASK_NAMES.findIndex(
+        n=>n.toUpperCase()===t.trim().toUpperCase()); if(i>=0) m|=1<<i; } return m; };
+    const parseLay=s=>{ let m=0; for(const t of s.split(",")){ const l=parseInt(t); if(l>=0&&l<8) m|=1<<l; } return m; };
+    const save=()=>setKo(i,{trigger:state.trigger,replacement:state.replacement,
+      triggerMods:parseMods(mods.value),suppressedMods:state.suppressedMods,negativeMods:state.negativeMods,
+      layers:parseLay(lay.value),options:state.options,enabled:en.checked});
+    tr.querySelector(".trig").appendChild(kcField(k.trigger,`Override ${i} trigger`,v=>{state.trigger=v;save();}));
+    tr.querySelector(".repl").appendChild(kcField(k.replacement,`Override ${i} replacement`,v=>{state.replacement=v;save();}));
+    mods.onchange=save; lay.onchange=save; en.onchange=save;
+  }
+}
+
 //// ---- presets (shared JSON schema with q1config.py) ----
-const FLAG_KEYS=["caps_word","permissive_hold","hold_on_other_key","retro_tapping","auto_shift"];
+const FLAG_KEYS=["caps_word","permissive_hold","hold_on_other_key","retro_tapping","auto_shift",
+  "caps_word_double_shift","caps_word_both_shifts"];
 function kcParse(t){
-  t=String(t).toUpperCase();
+  t=String(t).toUpperCase().trim();
   if(t.startsWith("KC_")) t=t.slice(3);
   if(t.startsWith("S(")&&t.endsWith(")")) return 0x0200|kcParse(t.slice(2,-1));
+  if(t.startsWith("MT(")&&t.endsWith(")")){ const [m,b]=t.slice(3,-1).split(",");
+    return QK_MOD_TAP|(mods5FromStr(m)<<8)|(kcParse(b)&0xFF); }
+  if(t.startsWith("LT(")&&t.endsWith(")")){ const [l,b]=t.slice(3,-1).split(",");
+    return QK_LAYER_TAP|((parseInt(l)&0xF)<<8)|(kcParse(b)&0xFF); }
+  if(t.startsWith("OSM(")&&t.endsWith(")")) return QK_OSM|(mods5FromStr(t.slice(4,-1))&0x1F);
+  if(t.startsWith("OSL(")&&t.endsWith(")")) return 0x5280|(parseInt(t.slice(4,-1))&0x1F);
+  if(t.startsWith("MOD(")&&t.endsWith(")")){ const [m,b]=t.slice(4,-1).split(",");
+    return QK_MODS|(mods5FromStr(m)<<8)|(kcParse(b)&0xFF); }
   if(t.startsWith("TD(")&&t.endsWith(")")) return 0x5700|parseInt(t.slice(3,-1));
   if(/^TD\d+$/.test(t)) return 0x5700|parseInt(t.slice(2));
   if(t.startsWith("0X")) return parseInt(t,16);
@@ -471,35 +591,67 @@ async function readConfig(){
   const g=await getGlobal(), f=await getFeat();
   const flags={}; FLAG_KEYS.forEach((k,bit)=>flags[k]=!!(f.flags&(1<<bit)));
   const tap_dance=[];
-  for(let i=0;i<64;i++){ const t=await getTd(i);
+  for(let i=0;i<32;i++){ const t=await getTd(i);
     tap_dance.push({tap:nameOf(t.tap),secondary:nameOf(t.sec),mode:t.mode?"hold":"double",enabled:!!t.en}); }
+  const combos=[];
+  for(let i=0;i<16;i++){ const c=await getCombo(i);
+    combos.push({keys:c.keys.map(nameOf),output:nameOf(c.output),enabled:c.enabled}); }
+  const key_overrides=[];
+  for(let i=0;i<16;i++){ const k=await getKo(i);
+    key_overrides.push({trigger:nameOf(k.trigger),replacement:nameOf(k.replacement),
+      trigger_mods:maskToList(k.triggerMods),suppressed_mods:maskToList(k.suppressedMods),
+      negative_mods:maskToList(k.negativeMods),
+      layers:[0,1,2,3,4,5,6,7].filter(l=>k.layers&(1<<l)),options:k.options,enabled:k.enabled}); }
   const indicators=[];
   for(let i=0;i<3;i++){ const v=await getInd(i);
     const hex="#"+[v.r,v.g,v.b].map(x=>x.toString(16).padStart(2,"0")).join("").toUpperCase();
     indicators.push({enabled:!!v.en,color:hex}); }
+  // Full dynamic keymap (all layers, row-major) so a preset can reproduce
+  // key->TD (and any other) assignments on stock firmware.
+  const keymap=[];
+  for(let l=0;l<LAYERS;l++){ const layer=[];
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) layer.push(nameOf(await viaGet(l,r,c)));
+    keymap.push(layer); }
   return {schema:1,tapping_term:g.tt,quick_tap_term:f.quicktap,autoshift_timeout:f.astimeout,
           caps_word_timeout:f.cwtimeout,debounce_time:f.debounce,
-          debounce_method:DEBOUNCE_METHODS[f.dbmethod]||"sym_defer_g",flags,tap_dance,indicators};
+          debounce_method:DEBOUNCE_METHODS[f.dbmethod]||"sym_defer_g",oneshot_timeout:f.oneshot,
+          flags,tap_dance,combos,key_overrides,indicators,keymap};
 }
 async function writeConfig(p){
   const cur=await readConfig(); let n=0;
   if(cur.tapping_term!==p.tapping_term){ await setTT(p.tapping_term); n++; }
   for(const [k,pid] of [["quick_tap_term",PARAM.QUICKTAP],["autoshift_timeout",PARAM.ASTIMEOUT],
-                        ["caps_word_timeout",PARAM.CWTIMEOUT],["debounce_time",PARAM.DEBOUNCE]])
+                        ["caps_word_timeout",PARAM.CWTIMEOUT],["debounce_time",PARAM.DEBOUNCE],
+                        ["oneshot_timeout",PARAM.ONESHOT]])
     if(p[k]!==undefined && cur[k]!==p[k]){ await setParam(pid,p[k]); n++; }
   if(p.debounce_method!==undefined && cur.debounce_method!==p.debounce_method){
     const idx=DEBOUNCE_METHODS.indexOf(p.debounce_method);
     if(idx>=0){ await setParam(PARAM.DEBOUNCE_METHOD,idx); n++; } }
   for(let bit=0;bit<FLAG_KEYS.length;bit++){ const k=FLAG_KEYS[bit];
     const want=!!(p.flags&&p.flags[k]); if(cur.flags[k]!==want){ await setFlag(bit,want); n++; } }
-  for(let i=0;i<64 && i<(p.tap_dance||[]).length;i++){ const c=cur.tap_dance[i],t=p.tap_dance[i];
+  for(let i=0;i<32 && i<(p.tap_dance||[]).length;i++){ const c=cur.tap_dance[i],t=p.tap_dance[i];
     if(c.tap!==t.tap||c.secondary!==t.secondary){ await setTdKc(i,kcParse(t.tap),kcParse(t.secondary)); n++; }
     if(c.mode!==t.mode){ await setTdMode(i,t.mode==="hold"?1:0); n++; }
     if(c.enabled!==t.enabled){ await setTdEn(i,t.enabled?1:0); n++; } }
+  for(let i=0;i<16 && i<(p.combos||[]).length;i++){ const c=cur.combos[i],t=p.combos[i];
+    if(JSON.stringify(c)!==JSON.stringify(t)){
+      await setCombo(i,{keys:(t.keys||[]).map(kcParse).concat([0,0,0,0]).slice(0,4),
+                        output:kcParse(t.output),enabled:!!t.enabled}); n++; } }
+  for(let i=0;i<16 && i<(p.key_overrides||[]).length;i++){ const c=cur.key_overrides[i],t=p.key_overrides[i];
+    if(JSON.stringify(c)!==JSON.stringify(t)){
+      await setKo(i,{trigger:kcParse(t.trigger),replacement:kcParse(t.replacement),
+        triggerMods:listToMask(t.trigger_mods),suppressedMods:listToMask(t.suppressed_mods),
+        negativeMods:listToMask(t.negative_mods),
+        layers:(t.layers||[]).reduce((m,l)=>m|(1<<l),0),options:t.options??7,enabled:!!t.enabled}); n++; } }
   for(let i=0;i<3 && i<(p.indicators||[]).length;i++){ const c=cur.indicators[i],t=p.indicators[i];
     if(c.enabled!==t.enabled||c.color.toUpperCase()!==t.color.toUpperCase()){
       const h=t.color; await setInd(i,t.enabled?1:0,
         parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),parseInt(h.substr(5,2),16)); n++; } }
+  if(p.keymap){
+    for(let l=0;l<LAYERS && l<p.keymap.length;l++)
+      for(let i=0;i<ROWS*COLS && i<p.keymap[l].length;i++)
+        if(cur.keymap[l][i]!==p.keymap[l][i]){
+          await viaSet(l, Math.floor(i/COLS), i%COLS, kcParse(p.keymap[l][i])); n++; } }
   return n;
 }
 async function savePreset(){

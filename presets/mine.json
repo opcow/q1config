@@ -7,12 +7,15 @@
   "caps_word_timeout": 5000,
   "debounce_time": 5,
   "debounce_method": "sym_defer_g",
+  "oneshot_timeout": 1000,
   "flags": {
     "caps_word": true,
     "permissive_hold": false,
     "hold_on_other_key": false,
     "retro_tapping": false,
-    "auto_shift": false
+    "auto_shift": false,
+    "caps_word_double_shift": true,
+    "caps_word_both_shifts": false
   },
   "tap_dance": [
     {
@@ -206,197 +209,329 @@
       "secondary": "NO",
       "mode": "double",
       "enabled": false
-    },
+    }
+  ],
+  "combos": [
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO",
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO",
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO",
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO",
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO",
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO",
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO",
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO",
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO",
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO",
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO",
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO",
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO",
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO",
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO",
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO",
+      "enabled": false
+    }
+  ],
+  "key_overrides": [
+    {
+      "trigger": "NO",
+      "replacement": "NO",
+      "trigger_mods": [],
+      "suppressed_mods": [],
+      "negative_mods": [],
+      "layers": [],
+      "options": 7,
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "trigger": "NO",
+      "replacement": "NO",
+      "trigger_mods": [],
+      "suppressed_mods": [],
+      "negative_mods": [],
+      "layers": [],
+      "options": 7,
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "trigger": "NO",
+      "replacement": "NO",
+      "trigger_mods": [],
+      "suppressed_mods": [],
+      "negative_mods": [],
+      "layers": [],
+      "options": 7,
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "trigger": "NO",
+      "replacement": "NO",
+      "trigger_mods": [],
+      "suppressed_mods": [],
+      "negative_mods": [],
+      "layers": [],
+      "options": 7,
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "trigger": "NO",
+      "replacement": "NO",
+      "trigger_mods": [],
+      "suppressed_mods": [],
+      "negative_mods": [],
+      "layers": [],
+      "options": 7,
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "trigger": "NO",
+      "replacement": "NO",
+      "trigger_mods": [],
+      "suppressed_mods": [],
+      "negative_mods": [],
+      "layers": [],
+      "options": 7,
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "trigger": "NO",
+      "replacement": "NO",
+      "trigger_mods": [],
+      "suppressed_mods": [],
+      "negative_mods": [],
+      "layers": [],
+      "options": 7,
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "trigger": "NO",
+      "replacement": "NO",
+      "trigger_mods": [],
+      "suppressed_mods": [],
+      "negative_mods": [],
+      "layers": [],
+      "options": 7,
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "trigger": "NO",
+      "replacement": "NO",
+      "trigger_mods": [],
+      "suppressed_mods": [],
+      "negative_mods": [],
+      "layers": [],
+      "options": 7,
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "trigger": "NO",
+      "replacement": "NO",
+      "trigger_mods": [],
+      "suppressed_mods": [],
+      "negative_mods": [],
+      "layers": [],
+      "options": 7,
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "trigger": "NO",
+      "replacement": "NO",
+      "trigger_mods": [],
+      "suppressed_mods": [],
+      "negative_mods": [],
+      "layers": [],
+      "options": 7,
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "trigger": "NO",
+      "replacement": "NO",
+      "trigger_mods": [],
+      "suppressed_mods": [],
+      "negative_mods": [],
+      "layers": [],
+      "options": 7,
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "trigger": "NO",
+      "replacement": "NO",
+      "trigger_mods": [],
+      "suppressed_mods": [],
+      "negative_mods": [],
+      "layers": [],
+      "options": 7,
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "trigger": "NO",
+      "replacement": "NO",
+      "trigger_mods": [],
+      "suppressed_mods": [],
+      "negative_mods": [],
+      "layers": [],
+      "options": 7,
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "trigger": "NO",
+      "replacement": "NO",
+      "trigger_mods": [],
+      "suppressed_mods": [],
+      "negative_mods": [],
+      "layers": [],
+      "options": 7,
       "enabled": false
     },
     {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
-      "enabled": false
-    },
-    {
-      "tap": "NO",
-      "secondary": "NO",
-      "mode": "double",
+      "trigger": "NO",
+      "replacement": "NO",
+      "trigger_mods": [],
+      "suppressed_mods": [],
+      "negative_mods": [],
+      "layers": [],
+      "options": 7,
       "enabled": false
     }
   ],

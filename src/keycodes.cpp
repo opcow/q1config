@@ -82,8 +82,17 @@ static void buildTables() {
         KC["TG" + n] = (uint16_t)(0x5260 | l);
     }
 
-    // One TDn per tap-dance slot (TD_SLOT_COUNT = 64 in the firmware keymap).
-    for (int i = 0; i < 64; i++) KC["TD" + std::to_string(i)] = (uint16_t)(0x5700 | i);
+    // One-shot keycodes for the picker (the GUI builder also constructs these,
+    // and nameOf() decodes the full ranges). OSM for the four left-hand mods;
+    // OSL for the first 8 layers.
+    const char* osm[] = {"LCTL","LSFT","LALT","LGUI"};
+    for (int i = 0; i < 4; i++)
+        KC["OSM(" + std::string(osm[i]) + ")"] = (uint16_t)(0x52A0 | (1 << i));
+    for (int l = 0; l < 8; l++)
+        KC["OSL(" + std::to_string(l) + ")"] = (uint16_t)(0x5280 | l);
+
+    // One TDn per tap-dance slot (TD_SLOT_COUNT = 32 in the firmware keymap).
+    for (int i = 0; i < 32; i++) KC["TD" + std::to_string(i)] = (uint16_t)(0x5700 | i);
 
     std::unordered_map<uint16_t, bool> seen;
     for (auto& [n, c] : KC) {
@@ -95,24 +104,99 @@ static void buildTables() {
               [](const auto& a, const auto& b) { return a.first < b.first; });
 }
 
+// 5-bit packed mod field <-> "+"-joined token form (LCTL/LSFT/.../RGUI).
+std::string mods5ToStr(uint8_t mods) {
+    static const char* L[4] = {"LCTL","LSFT","LALT","LGUI"};
+    static const char* R[4] = {"RCTL","RSFT","RALT","RGUI"};
+    bool right = mods & 0x10;
+    std::string s;
+    for (int i = 0; i < 4; i++)
+        if (mods & (1 << i)) { if (!s.empty()) s += "+"; s += right ? R[i] : L[i]; }
+    return s.empty() ? "0" : s;
+}
+uint8_t mods5FromStr(const std::string& s) {
+    if (s == "0" || s.empty()) return 0;
+    std::string up = s;
+    std::transform(up.begin(), up.end(), up.begin(), [](unsigned char c){ return (char)toupper(c); });
+    uint8_t m = 0;
+    size_t start = 0;
+    while (start <= up.size()) {
+        size_t plus = up.find('+', start);
+        std::string tok = up.substr(start, plus == std::string::npos ? std::string::npos : plus - start);
+        if (!tok.empty()) {
+            bool right = tok[0] == 'R';
+            uint8_t bit;
+            std::string t = tok.substr(1);
+            if (t == "CTL") bit = 0; else if (t == "SFT") bit = 1;
+            else if (t == "ALT") bit = 2; else if (t == "GUI") bit = 3;
+            else throw std::runtime_error("Unknown modifier: " + tok);
+            m |= (1 << bit) | (right ? 0x10 : 0);
+        }
+        if (plus == std::string::npos) break;
+        start = plus + 1;
+    }
+    return m;
+}
+
 std::string nameOf(uint16_t code) {
     buildTables();
     if (code >= 0x5700 && code <= 0x57FF)
         return "TD" + std::to_string(code & 0xFF);
-    // Layer-switch keycodes: <prefix>(layer), 0x20 stride
+    // Layer-switch + one-shot-mod keycodes: <prefix>(arg), 0x20 stride
     switch (code & 0xFFE0) {
         case 0x5200: return "TO("  + std::to_string(code & 0x1F) + ")";
         case 0x5220: return "MO("  + std::to_string(code & 0x1F) + ")";
         case 0x5240: return "DF("  + std::to_string(code & 0x1F) + ")";
         case 0x5260: return "TG("  + std::to_string(code & 0x1F) + ")";
         case 0x5280: return "OSL(" + std::to_string(code & 0x1F) + ")";
+        case 0x52A0: return "OSM(" + mods5ToStr(code & 0x1F) + ")";
         case 0x52C0: return "TT("  + std::to_string(code & 0x1F) + ")";
     }
+    // Named entries first (catches modded aliases like DQUO = S(QUOT)).
     for (auto& [n, c] : ENTRIES)
         if (c == code) return n;
+    // Mod-tap / layer-tap / modded keycodes (decoded as builder forms).
+    if (code >= QK_MOD_TAP && code <= 0x3FFF)
+        return "MT(" + mods5ToStr((code >> 8) & 0x1F) + "," + nameOf(code & 0xFF) + ")";
+    if (code >= QK_LAYER_TAP && code <= 0x4FFF)
+        return "LT(" + std::to_string((code >> 8) & 0xF) + "," + nameOf(code & 0xFF) + ")";
+    if (code >= QK_MODS && code <= 0x1FFF)
+        return "MOD(" + mods5ToStr((code >> 8) & 0x1F) + "," + nameOf(code & 0xFF) + ")";
     char buf[12];
     snprintf(buf, sizeof(buf), "0x%04X", code);
     return buf;
+}
+
+// Parse FUNC(args) builder forms. Returns true and sets out on match.
+static bool parseFunc(const std::string& s, uint16_t& out) {
+    auto inner = [&](const char* fn) -> std::string {
+        std::string pfx = std::string(fn) + "(";
+        if (s.rfind(pfx, 0) == 0 && s.back() == ')')
+            return s.substr(pfx.size(), s.size() - pfx.size() - 1);
+        return std::string("\x01");  // sentinel = no match
+    };
+    std::string a;
+    if ((a = inner("MT")) != "\x01") {
+        size_t c = a.find(',');
+        out = (uint16_t)(QK_MOD_TAP | (mods5FromStr(a.substr(0, c)) << 8) | (kcParse(a.substr(c + 1)) & 0xFF));
+        return true;
+    }
+    if ((a = inner("LT")) != "\x01") {
+        size_t c = a.find(',');
+        out = (uint16_t)(QK_LAYER_TAP | ((std::stoi(a.substr(0, c)) & 0xF) << 8) | (kcParse(a.substr(c + 1)) & 0xFF));
+        return true;
+    }
+    if ((a = inner("OSM")) != "\x01") {
+        out = (uint16_t)(QK_OSM | (mods5FromStr(a) & 0x1F));
+        return true;
+    }
+    if ((a = inner("MOD")) != "\x01") {
+        size_t c = a.find(',');
+        out = (uint16_t)(QK_MODS | (mods5FromStr(a.substr(0, c)) << 8) | (kcParse(a.substr(c + 1)) & 0xFF));
+        return true;
+    }
+    if ((a = inner("OSL")) != "\x01") { out = (uint16_t)(0x5280 | (std::stoi(a) & 0x1F)); return true; }
+    return false;
 }
 
 uint16_t kcParse(const std::string& raw) {
@@ -120,6 +204,8 @@ uint16_t kcParse(const std::string& raw) {
     std::string s = raw;
     std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c){ return (char)toupper(c); });
     if (s.rfind("KC_", 0) == 0) s = s.substr(3);
+    uint16_t fn;
+    if (parseFunc(s, fn)) return fn;
     if (s.rfind("TD", 0) == 0 && s.size() > 2 && std::isdigit((unsigned char)s[2]))
         return (uint16_t)(0x5700 | std::stoi(s.substr(2)));
     if (s.rfind("0X", 0) == 0)
