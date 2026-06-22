@@ -1,0 +1,945 @@
+{
+  "autoshift_timeout": 175,
+  "caps_word_timeout": 5000,
+  "combos": [
+    {
+      "enabled": false,
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO"
+    },
+    {
+      "enabled": false,
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO"
+    },
+    {
+      "enabled": false,
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO"
+    },
+    {
+      "enabled": false,
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO"
+    },
+    {
+      "enabled": false,
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO"
+    },
+    {
+      "enabled": false,
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO"
+    },
+    {
+      "enabled": false,
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO"
+    },
+    {
+      "enabled": false,
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO"
+    },
+    {
+      "enabled": false,
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO"
+    },
+    {
+      "enabled": false,
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO"
+    },
+    {
+      "enabled": false,
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO"
+    },
+    {
+      "enabled": false,
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO"
+    },
+    {
+      "enabled": false,
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO"
+    },
+    {
+      "enabled": false,
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO"
+    },
+    {
+      "enabled": false,
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO"
+    },
+    {
+      "enabled": false,
+      "keys": [
+        "NO",
+        "NO",
+        "NO",
+        "NO"
+      ],
+      "output": "NO"
+    }
+  ],
+  "debounce_method": "sym_defer_g",
+  "debounce_time": 5,
+  "flags": {
+    "auto_shift": false,
+    "caps_word": false,
+    "caps_word_both_shifts": false,
+    "caps_word_double_shift": false,
+    "hold_on_other_key": false,
+    "permissive_hold": false,
+    "retro_tapping": false
+  },
+  "indicators": [
+    {
+      "color": "#FF0000",
+      "enabled": false
+    },
+    {
+      "color": "#00A000",
+      "enabled": false
+    },
+    {
+      "color": "#808000",
+      "enabled": false
+    }
+  ],
+  "key_overrides": [
+    {
+      "enabled": false,
+      "layers": [],
+      "negative_mods": [],
+      "options": 0,
+      "replacement": "NO",
+      "suppressed_mods": [],
+      "trigger": "NO",
+      "trigger_mods": []
+    },
+    {
+      "enabled": false,
+      "layers": [],
+      "negative_mods": [],
+      "options": 0,
+      "replacement": "NO",
+      "suppressed_mods": [],
+      "trigger": "NO",
+      "trigger_mods": []
+    },
+    {
+      "enabled": false,
+      "layers": [],
+      "negative_mods": [],
+      "options": 0,
+      "replacement": "NO",
+      "suppressed_mods": [],
+      "trigger": "NO",
+      "trigger_mods": []
+    },
+    {
+      "enabled": false,
+      "layers": [],
+      "negative_mods": [],
+      "options": 0,
+      "replacement": "NO",
+      "suppressed_mods": [],
+      "trigger": "NO",
+      "trigger_mods": []
+    },
+    {
+      "enabled": false,
+      "layers": [],
+      "negative_mods": [],
+      "options": 0,
+      "replacement": "NO",
+      "suppressed_mods": [],
+      "trigger": "NO",
+      "trigger_mods": []
+    },
+    {
+      "enabled": false,
+      "layers": [],
+      "negative_mods": [],
+      "options": 0,
+      "replacement": "NO",
+      "suppressed_mods": [],
+      "trigger": "NO",
+      "trigger_mods": []
+    },
+    {
+      "enabled": false,
+      "layers": [],
+      "negative_mods": [],
+      "options": 0,
+      "replacement": "NO",
+      "suppressed_mods": [],
+      "trigger": "NO",
+      "trigger_mods": []
+    },
+    {
+      "enabled": false,
+      "layers": [],
+      "negative_mods": [],
+      "options": 0,
+      "replacement": "NO",
+      "suppressed_mods": [],
+      "trigger": "NO",
+      "trigger_mods": []
+    },
+    {
+      "enabled": false,
+      "layers": [],
+      "negative_mods": [],
+      "options": 0,
+      "replacement": "NO",
+      "suppressed_mods": [],
+      "trigger": "NO",
+      "trigger_mods": []
+    },
+    {
+      "enabled": false,
+      "layers": [],
+      "negative_mods": [],
+      "options": 0,
+      "replacement": "NO",
+      "suppressed_mods": [],
+      "trigger": "NO",
+      "trigger_mods": []
+    },
+    {
+      "enabled": false,
+      "layers": [],
+      "negative_mods": [],
+      "options": 0,
+      "replacement": "NO",
+      "suppressed_mods": [],
+      "trigger": "NO",
+      "trigger_mods": []
+    },
+    {
+      "enabled": false,
+      "layers": [],
+      "negative_mods": [],
+      "options": 0,
+      "replacement": "NO",
+      "suppressed_mods": [],
+      "trigger": "NO",
+      "trigger_mods": []
+    },
+    {
+      "enabled": false,
+      "layers": [],
+      "negative_mods": [],
+      "options": 0,
+      "replacement": "NO",
+      "suppressed_mods": [],
+      "trigger": "NO",
+      "trigger_mods": []
+    },
+    {
+      "enabled": false,
+      "layers": [],
+      "negative_mods": [],
+      "options": 0,
+      "replacement": "NO",
+      "suppressed_mods": [],
+      "trigger": "NO",
+      "trigger_mods": []
+    },
+    {
+      "enabled": false,
+      "layers": [],
+      "negative_mods": [],
+      "options": 0,
+      "replacement": "NO",
+      "suppressed_mods": [],
+      "trigger": "NO",
+      "trigger_mods": []
+    },
+    {
+      "enabled": false,
+      "layers": [],
+      "negative_mods": [],
+      "options": 0,
+      "replacement": "NO",
+      "suppressed_mods": [],
+      "trigger": "NO",
+      "trigger_mods": []
+    }
+  ],
+  "keymap": [
+    [
+      "ESC",
+      "BRID",
+      "BRIU",
+      "MCTL",
+      "LPAD",
+      "RGB_VAD",
+      "RGB_VAI",
+      "MPRV",
+      "MPLY",
+      "MNXT",
+      "MUTE",
+      "VOLD",
+      "VOLU",
+      "DEL",
+      "NO",
+      "MUTE",
+      "GRV",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "0",
+      "MINS",
+      "EQL",
+      "BSPC",
+      "NO",
+      "PGUP",
+      "TAB",
+      "Q",
+      "W",
+      "E",
+      "R",
+      "T",
+      "Y",
+      "U",
+      "I",
+      "O",
+      "P",
+      "LBRC",
+      "RBRC",
+      "BSLS",
+      "NO",
+      "PGDN",
+      "CAPS",
+      "A",
+      "S",
+      "D",
+      "F",
+      "G",
+      "H",
+      "J",
+      "K",
+      "L",
+      "SCLN",
+      "QUOT",
+      "NO",
+      "ENT",
+      "NO",
+      "HOME",
+      "LSFT",
+      "NO",
+      "Z",
+      "X",
+      "C",
+      "V",
+      "B",
+      "N",
+      "M",
+      "COMM",
+      "DOT",
+      "SLSH",
+      "NO",
+      "RSFT",
+      "UP",
+      "NO",
+      "LCTL",
+      "LOpt",
+      "LCmd",
+      "NO",
+      "NO",
+      "NO",
+      "SPC",
+      "NO",
+      "NO",
+      "NO",
+      "LCmd",
+      "MO(1)",
+      "RCTL",
+      "LEFT",
+      "DOWN",
+      "RGHT"
+    ],
+    [
+      "TRNS",
+      "F1",
+      "F2",
+      "F3",
+      "F4",
+      "F5",
+      "F6",
+      "F7",
+      "F8",
+      "F9",
+      "F10",
+      "F11",
+      "F12",
+      "TRNS",
+      "NO",
+      "RGB_TOG",
+      "TRNS",
+      "Cortana",
+      "Siri",
+      "BT1",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "NO",
+      "TRNS",
+      "RGB_TOG",
+      "RGB_MOD",
+      "RGB_VAI",
+      "RGB_HUI",
+      "RGB_SAI",
+      "RGB_SPI",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "NO",
+      "TRNS",
+      "TRNS",
+      "RGB_RMOD",
+      "RGB_VAD",
+      "RGB_HUD",
+      "RGB_SAD",
+      "RGB_SPD",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "NO",
+      "TRNS",
+      "NO",
+      "END",
+      "TRNS",
+      "NO",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "BT2",
+      "NK_TOGG",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "NO",
+      "TRNS",
+      "TRNS",
+      "NO",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "NO",
+      "NO",
+      "NO",
+      "TRNS",
+      "NO",
+      "NO",
+      "NO",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS"
+    ],
+    [
+      "ESC",
+      "F1",
+      "F2",
+      "F3",
+      "F4",
+      "F5",
+      "F6",
+      "F7",
+      "F8",
+      "TD4",
+      "TD5",
+      "TD6",
+      "TD7",
+      "DEL",
+      "NO",
+      "MUTE",
+      "GRV",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "0",
+      "MINS",
+      "EQL",
+      "BSPC",
+      "NO",
+      "PGUP",
+      "TAB",
+      "Q",
+      "W",
+      "E",
+      "R",
+      "T",
+      "Y",
+      "U",
+      "I",
+      "O",
+      "P",
+      "LBRC",
+      "RBRC",
+      "BSLS",
+      "NO",
+      "PGDN",
+      "TD0",
+      "A",
+      "S",
+      "D",
+      "F",
+      "G",
+      "H",
+      "J",
+      "K",
+      "L",
+      "TD3",
+      "QUOT",
+      "NO",
+      "ENT",
+      "NO",
+      "TD1",
+      "LSFT",
+      "NO",
+      "Z",
+      "X",
+      "C",
+      "V",
+      "B",
+      "N",
+      "M",
+      "COMM",
+      "DOT",
+      "SLSH",
+      "NO",
+      "RSFT",
+      "UP",
+      "NO",
+      "LCTL",
+      "LGUI",
+      "LALT",
+      "NO",
+      "NO",
+      "NO",
+      "SPC",
+      "NO",
+      "NO",
+      "NO",
+      "RALT",
+      "MO(3)",
+      "RCTL",
+      "LEFT",
+      "DOWN",
+      "RGHT"
+    ],
+    [
+      "TRNS",
+      "BRID",
+      "BRIU",
+      "MCtrl",
+      "LPad",
+      "RGB_VAD",
+      "RGB_VAI",
+      "MPRV",
+      "MPLY",
+      "MNXT",
+      "MUTE",
+      "VOLD",
+      "VOLU",
+      "TRNS",
+      "NO",
+      "RGB_TOG",
+      "TRNS",
+      "Cortana",
+      "Siri",
+      "BT1",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "NO",
+      "TRNS",
+      "RGB_TOG",
+      "RGB_MOD",
+      "RGB_VAI",
+      "RGB_HUI",
+      "RGB_SAI",
+      "RGB_SPI",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "NO",
+      "TRNS",
+      "TRNS",
+      "RGB_RMOD",
+      "RGB_VAD",
+      "RGB_HUD",
+      "RGB_SAD",
+      "RGB_SPD",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "NO",
+      "TRNS",
+      "NO",
+      "END",
+      "TRNS",
+      "NO",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "BT2",
+      "NK_TOGG",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "NO",
+      "TRNS",
+      "TRNS",
+      "NO",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "NO",
+      "NO",
+      "NO",
+      "TRNS",
+      "NO",
+      "NO",
+      "NO",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS",
+      "TRNS"
+    ]
+  ],
+  "oneshot_timeout": 1000,
+  "quick_tap_term": 120,
+  "schema": 1,
+  "tap_dance": [
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "CAPS",
+      "tap": "CAPS"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "END",
+      "tap": "HOME"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "ESC",
+      "tap": "ESC"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "COLN",
+      "tap": "SCLN"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "PSCR",
+      "tap": "F9"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "SCRL",
+      "tap": "F10"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "PAUS",
+      "tap": "F11"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NUM",
+      "tap": "F12"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    },
+    {
+      "enabled": false,
+      "mode": "double",
+      "secondary": "NO",
+      "tap": "NO"
+    }
+  ],
+  "tapping_term": 200
+}
