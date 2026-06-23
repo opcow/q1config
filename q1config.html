@@ -45,6 +45,16 @@
   .kcfield { width:100%; text-align:left; padding:4px 6px; font-size:12px; }
   .hint { color:var(--muted); font-size:12px; }
   .pillrow { display:flex; gap:6px; flex-wrap:wrap; }
+  /* feature toggles: checkbox on the left, label after — keeps boxes aligned */
+  .check { display:flex; align-items:center; gap:8px; margin:6px 0; cursor:pointer; }
+  .check input { flex:0 0 auto; margin:0; }
+  /* tabs */
+  #tabbar { display:flex; gap:4px; flex-wrap:wrap; margin:16px 0 0; border-bottom:1px solid #3a3d46; }
+  #tabbar button { border-radius:6px 6px 0 0; padding:7px 14px; }
+  #tabbar button.on { background:var(--accent); border-color:#258; }
+  .tabpanel { display:none; }
+  .tabpanel.on { display:block; }
+  .tabpanel h2:first-child { margin-top:14px; }
   /* keycode picker modal */
   #kcpicker { position:fixed; inset:0; background:#000a; z-index:100; display:none;
               align-items:center; justify-content:center; }
@@ -66,7 +76,7 @@
 </style>
 </head>
 <body>
-<h1>Keychron Q1 Pro — runtime config <span style="font-size:12px;color:#9aa0ab;font-weight:normal">build 2026-06-21b</span></h1>
+<h1>Keychron Q1 Pro — runtime config <span style="font-size:12px;color:#9aa0ab;font-weight:normal">build 2026-06-23</span></h1>
 <div class="hint">WebHID (Chrome/Edge). Serve over http://localhost — <code>file://</code> won't work.</div>
 
 <div id="bar">
@@ -83,51 +93,78 @@
     <button id="exitdemo" style="margin-left:12px; font-size:12px;">Exit Demo</button>
   </div>
 
-  <h2>Keyboard</h2>
-  <div class="panel">
-    <div class="row">
-      <span>Layer:</span>
-      <span class="layers" id="layers"></span>
-      <button id="identify">Identify a key</button>
-      <span class="hint" id="kbhint">Click a key to change it.</span>
+  <div id="tabbar">
+    <button data-tab="keyboard" class="on">Keyboard</button>
+    <button data-tab="features">Features</button>
+    <button data-tab="tapdance">Tap Dance</button>
+    <button data-tab="timing">Timing</button>
+    <button data-tab="combos">Combos</button>
+    <button data-tab="overrides">Key Overrides</button>
+    <button data-tab="indicators">Indicators</button>
+  </div>
+
+  <div class="tabpanel on" data-tab="keyboard">
+    <h2>Keyboard</h2>
+    <div class="panel">
+      <div class="row">
+        <span>Layer:</span>
+        <span class="layers" id="layers"></span>
+        <button id="identify">Identify a key</button>
+        <span class="hint" id="kbhint">Click a key to change it.</span>
+      </div>
+      <div id="kb"></div>
     </div>
-    <div id="kb"></div>
+
+    <h2>Debounce</h2>
+    <div class="panel" id="debounce"></div>
   </div>
 
-  <h2>Tap dance slots</h2>
-  <div class="panel">
-    <div class="hint" style="margin-bottom:6px">Disabled slots act as their plain "tap" key.
-      A slot only affects a physical key if that key is assigned <code>TDn</code> above.</div>
-    <table id="tdtable"><thead><tr>
-      <th>#</th><th>name</th><th>tap</th><th>secondary</th><th>mode</th><th>tap term</th><th>PH</th><th>enabled</th>
-    </tr></thead><tbody></tbody></table>
-    <div class="hint" style="margin-top:6px"><button id="showall">Show all 32 slots</button></div>
+  <div class="tabpanel" data-tab="features">
+    <h2>Features</h2>
+    <div class="panel" id="features"></div>
   </div>
 
-  <h2>Timing</h2>
-  <div class="panel" id="timing"></div>
-
-  <h2>Features</h2>
-  <div class="panel" id="features"></div>
-
-  <h2>Combos</h2>
-  <div class="panel">
-    <div class="hint" style="margin-bottom:6px">Press all input keys together to emit the output. Needs at least two inputs.</div>
-    <table id="combotable"><thead><tr>
-      <th>#</th><th>key 1</th><th>key 2</th><th>key 3</th><th>key 4</th><th>output</th><th>on</th>
-    </tr></thead><tbody></tbody></table>
+  <div class="tabpanel" data-tab="tapdance">
+    <h2>Tap dance slots</h2>
+    <div class="panel">
+      <div class="hint" style="margin-bottom:6px">Disabled slots act as their plain "tap" key.
+        A slot only affects a physical key if that key is assigned <code>TDn</code> above.</div>
+      <table id="tdtable"><thead><tr>
+        <th>#</th><th>name</th><th>tap</th><th>secondary</th><th>mode</th><th>tap term</th><th>PH</th><th>enabled</th>
+      </tr></thead><tbody></tbody></table>
+      <div class="hint" style="margin-top:6px"><button id="showall">Show all 32 slots</button></div>
+    </div>
   </div>
 
-  <h2>Key overrides</h2>
-  <div class="panel">
-    <div class="hint" style="margin-bottom:6px">When trigger + trigger-mods are held (and negative-mods are not), send replacement instead.</div>
-    <table id="kotable"><thead><tr>
-      <th>#</th><th>trigger</th><th>replacement</th><th>trigger mods</th><th>layers</th><th>on</th>
-    </tr></thead><tbody></tbody></table>
+  <div class="tabpanel" data-tab="timing">
+    <h2>Timing</h2>
+    <div class="panel" id="timing"></div>
   </div>
 
-  <h2>Indicators</h2>
-  <div class="panel" id="indicators"></div>
+  <div class="tabpanel" data-tab="combos">
+    <h2>Combos</h2>
+    <div class="panel">
+      <div class="hint" style="margin-bottom:6px">Press all input keys together to emit the output. Needs at least two inputs.</div>
+      <table id="combotable"><thead><tr>
+        <th>#</th><th>key 1</th><th>key 2</th><th>key 3</th><th>key 4</th><th>output</th><th>on</th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <div class="tabpanel" data-tab="overrides">
+    <h2>Key overrides</h2>
+    <div class="panel">
+      <div class="hint" style="margin-bottom:6px">When trigger + trigger-mods are held (and negative-mods are not), send replacement instead.</div>
+      <table id="kotable"><thead><tr>
+        <th>#</th><th>trigger</th><th>replacement</th><th>trigger mods</th><th>layers</th><th>on</th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <div class="tabpanel" data-tab="indicators">
+    <h2>Indicators</h2>
+    <div class="panel" id="indicators"></div>
+  </div>
 
   <h2>Presets</h2>
   <div class="panel row">
@@ -363,6 +400,8 @@ const FF={CAPS_WORD:0,PERMISSIVE:1,HOKP:2,RETRO:3,AUTOSHIFT:4,CW_DOUBLE_SHIFT:5,
 const PARAM={QUICKTAP:0,ASTIMEOUT:1,CWTIMEOUT:2,DEBOUNCE:3,DEBOUNCE_METHOD:4,ONESHOT:5};
 // debounce method index -> canonical name (must match keymap.c dispatcher order)
 const DEBOUNCE_METHODS=["none","sym_defer_g","sym_eager_pk","asym_eager_defer_pk"];
+// friendly labels for the dropdown (parallel to DEBOUNCE_METHODS; mirrors the native app)
+const DEBOUNCE_METHOD_LABELS=["None","Symmetric Defer","Symmetric Eager","Asymmetric Eager/Defer"];
 
 //// ---- demo mode data ----
 const DEMO_DATA={
@@ -463,10 +502,16 @@ async function connect(){
 }
 
 async function refreshAll(){
-  buildLayers(); await refreshKeyboard();
+  buildLayers(); await refreshKeyboard(); await buildDebounce();
   await buildTapDance(); await buildTiming(); await buildFeatures(); await buildCombos();
   await buildKeyOverrides(); await buildIndicators();
 }
+
+// Tab switching: show the matching panel, highlight the active button.
+$("#tabbar").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+  $("#tabbar").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
+  document.querySelectorAll(".tabpanel").forEach(p=>p.classList.toggle("on",p.dataset.tab===b.dataset.tab));
+});
 
 function buildLayers(){
   const names=["MAC_BASE","MAC_FN","WIN_BASE","WIN_FN"];
@@ -568,31 +613,43 @@ async function buildTiming(){
     ${numRow("Quick tap term",f.quicktap,0,500)}
     ${numRow("Auto-shift timeout",f.astimeout,50,500)}
     ${numRow("Caps Word timeout",f.cwtimeout,0,10000)}
-    ${numRow("One-shot timeout",f.oneshot,0,5000)}
-    ${numRow("Debounce",f.debounce,0,50)}
-    <div class="row"><label>Debounce method</label>
-      <select id="dbmethod">${DEBOUNCE_METHODS.map((m,i)=>
-        `<option value="${i}"${i===f.dbmethod?" selected":""}>${m}</option>`).join("")}</select></div>`;
+    ${numRow("One-shot timeout",f.oneshot,0,5000)}`;
   const apply=(label,v)=>{
     if(label==="Tapping term") return setTT(v);
     if(label==="Quick tap term") return setParam(PARAM.QUICKTAP,v);
     if(label==="Auto-shift timeout") return setParam(PARAM.ASTIMEOUT,v);
     if(label==="Caps Word timeout") return setParam(PARAM.CWTIMEOUT,v);
     if(label==="One-shot timeout") return setParam(PARAM.ONESHOT,v);
-    if(label==="Debounce") return setParam(PARAM.DEBOUNCE,v);
   };
   $("#timing").querySelectorAll("input[data-k]").forEach(inp=>{
     inp.oninput=()=>{ const k=inp.dataset.k;
       $("#timing").querySelectorAll(`input[data-k="${k}"]`).forEach(o=>{if(o!==inp)o.value=inp.value;}); };
     inp.onchange=()=>apply(inp.dataset.k,+inp.value);
   });
+}
+
+// Debounce panel (Keyboard tab) — time slider + method dropdown, mirrors the native app.
+async function buildDebounce(){
+  const f=await getFeat();
+  $("#debounce").innerHTML=`
+    <div class="row"><label>Time</label>
+      <input type="range" min="0" max="50" value="${f.debounce}" data-dbk>
+      <input type="number" min="0" max="50" value="${f.debounce}" data-dbk style="width:80px">
+      <span class="hint">ms</span></div>
+    <div class="row"><label>Method</label>
+      <select id="dbmethod">${DEBOUNCE_METHOD_LABELS.map((m,i)=>
+        `<option value="${i}"${i===f.dbmethod?" selected":""}>${m}</option>`).join("")}</select></div>`;
+  $("#debounce").querySelectorAll("input[data-dbk]").forEach(inp=>{
+    inp.oninput=()=>$("#debounce").querySelectorAll("input[data-dbk]").forEach(o=>{if(o!==inp)o.value=inp.value;});
+    inp.onchange=()=>setParam(PARAM.DEBOUNCE,+inp.value);
+  });
   $("#dbmethod").onchange=e=>setParam(PARAM.DEBOUNCE_METHOD,+e.target.value);
 }
 
 async function buildFeatures(){
   const f=await getFeat();
-  const chk=(label,bit,on)=>`<div class="row"><label>${label}</label>
-      <input type="checkbox" data-bit="${bit}" ${on?"checked":""}></div>`;
+  const chk=(label,bit,on)=>`<label class="check">
+      <input type="checkbox" data-bit="${bit}" ${on?"checked":""}><span>${label}</span></label>`;
   $("#features").innerHTML=`
     <div class="pillrow" style="flex-direction:column">
       ${chk("Caps Word",FF.CAPS_WORD,f.flags&(1<<FF.CAPS_WORD))}
