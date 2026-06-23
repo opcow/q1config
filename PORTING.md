@@ -13,10 +13,10 @@ in [PROTOCOL.md](PROTOCOL.md); this document focuses on *how it's wired* and *wh
 ## 1. What this gives you / when to use it
 
 A host app can read and write keyboard settings **at runtime, over USB**, with no recompile
-or reflash: tapping term, per-key tap-hold options, tap-dance behavior, Caps Word, Auto
-Shift, RGB state indicators, and even key remapping. Settings persist in EEPROM. It's a
-lightweight, custom subset of what Vial provides — useful when your board isn't supported by
-the vial-qmk fork.
+or reflash: tapping term, per-tap-dance-slot tap-hold options, tap-dance behavior, combos,
+key overrides, one-shot timeout, debounce method/time, Caps Word, Auto Shift, RGB state
+indicators, and even key remapping. Settings persist in EEPROM. It's a lightweight, custom
+subset of what Vial provides — useful when your board isn't supported by the vial-qmk fork.
 
 Requirements on the target board:
 
@@ -60,6 +60,11 @@ keypress's row/col — handy for "click a key in the GUI."
 **Key remapping for free.** Assigning a physical key to a tap-dance slot (or any keycode)
 uses QMK's **standard VIA dynamic-keymap** commands (`0x05` set / `0x04` get), no custom
 firmware needed — a tap-dance keycode is just `TD(n) = 0x5700 | n`.
+
+**Rebuilt live tables.** Several QMK features read a compile-time table (combos, key
+overrides) or fix one algorithm at compile time (debounce). To make them runtime-configurable
+the keymap keeps the *definitions* in EEPROM and rebuilds the live RAM table whenever config
+changes (`rebuild_combos()` / `rebuild_kos()`, or a custom-debounce dispatcher) — see §4.
 
 **Neutral defaults.** The reference ships *stock* compile-time defaults (everything off) so
 the firmware is shareable; personal setup is applied at runtime and stored only in the
@@ -190,12 +195,41 @@ That's a complete, working real-time setting. Everything else is more of the sam
 
 Each maps a `user_config` field (or bit) to a QMK hook; see the `rtcfg` keymap for full code.
 
-- **Per-key tap-hold** — `#define PERMISSIVE_HOLD_PER_KEY` (etc.) in `config.h`, then return
-  a runtime flag from `get_permissive_hold` / `get_hold_on_other_key_press` /
-  `get_retro_tapping` / `get_quick_tap_term`.
+- **Global + per-slot tap-hold** — `#define PERMISSIVE_HOLD_PER_KEY` (and
+  `HOLD_ON_OTHER_KEY_PRESS_PER_KEY` / `RETRO_TAPPING_PER_KEY` / `QUICK_TAP_TERM_PER_KEY`) in
+  `config.h`, then return a runtime flag from `get_permissive_hold` / `get_hold_on_other_key_press`
+  / `get_retro_tapping` / `get_quick_tap_term`. For *per-tap-dance-slot* overrides, have those
+  callbacks (plus `get_tapping_term`) check whether the keycode is a tap-dance trigger
+  (`QK_TAP_DANCE <= kc < QK_TAP_DANCE + slots`) and return that slot's stored override if set,
+  else fall through to the global value — per-slot timing without per-physical-key storage.
 - **Runtime tap-dance slots** — give every slot the same `ACTION_TAP_DANCE_FN_ADVANCED`
   callbacks; read keycodes/mode/enable from `user_config` (`user_data` = slot index). Place
-  `TD(n)` in the layout for keys you want configurable.
+  `TD(n)` in the layout for keys you want configurable. The reference exposes 32 slots
+  (`TD0`–`TD31`); `tap_dance_actions[]` must have an entry for every slot so any can be assigned.
+- **Runtime combos** (`COMBO_ENABLE = yes`) — store combo defs (input keycodes + output) in
+  `user_config` and rebuild QMK's table from them. Because `keymap_introspection.c` `#include`s
+  the keymap (same translation unit), you can't override the weak `combo_count()`/`combo_get()`
+  there; instead define a full-size `combo_t key_combos[]` (which stock `combo_count_raw()`/
+  `combo_get_raw()` serve) and a `rebuild_combos()` that fills each slot's `COMBO_END`-terminated
+  key list — disabled/invalid slots get an empty list so they never fire. Key-list pointers may
+  live in RAM on ARM (`pgm_read_word` is a plain load); AVR would need PROGMEM.
+- **Runtime key overrides** (`KEY_OVERRIDE_ENABLE = yes`) — QMK reads the weak `key_overrides`
+  (a NULL-terminated array of `const key_override_t *`). Point it at a RAM table rebuilt from
+  `user_config` (`rebuild_kos()`); include only enabled slots and keep the array NULL-terminated.
+- **Runtime one-shot timeout** — `#define ONESHOT_TIMEOUT 0` to disable QMK's built-in expiry,
+  then expire a pending one-shot mod/layer yourself in `housekeeping_task_user()`: read
+  `get_oneshot_mods()` / `get_oneshot_layer_state()`, start a timer when one arms, and
+  `clear_oneshot_mods()` / `clear_oneshot_layer_state(...)` on timeout (skip a tap-toggled, i.e.
+  held, layer). `ONESHOT_TAP_TOGGLE` stays compile-time — QMK has no runtime hook for it.
+- **Runtime debounce method + time** — `DEBOUNCE_TYPE = custom` (+ `SRC += debounce_rt.c`).
+  Compile several stock algorithms into one file, each with uniquely-prefixed symbols and the
+  compile-time `DEBOUNCE` constant replaced by a `rtcfg_debounce_time()` accessor, behind a
+  dispatcher exposed as the single `debounce()/debounce_init()/debounce_free()`. The dispatcher
+  picks the algorithm from `rtcfg_debounce_method()` each scan, calling the old method's `free`
+  + new method's `init` on a switch; a time of 0 means "no debounce" regardless of method. Defer
+  real per-method init to the first `debounce()` call — `debounce_init()` runs before
+  `keyboard_post_init_user()` loads `user_config`. Read settings through tiny accessors
+  (`rtcfg.h`) so the dispatcher needn't know the `user_config_t` layout.
 - **Caps Word** — `#define CAPS_WORD_IDLE_TIMEOUT 0` to disable the built-in timer; gate
   activation in `caps_word_set_user(true)` (call `caps_word_off()` if disabled) and roll a
   runtime idle timeout in `housekeeping_task_user()`.
@@ -235,6 +269,13 @@ unchanged.
   data (the layer), *not* a status — don't status-check those.
 - **Weak symbols + LTO:** keep `LTO_ENABLE` off; LTO can interfere with overriding weak
   functions across compilation units.
+- **Combos in the introspection TU:** if your keymap is `#include`d by `keymap_introspection.c`,
+  override `combo_t key_combos[]` (served by `combo_count_raw`/`combo_get_raw`) — not the weak
+  `combo_count()`/`combo_get()`, which live in the same TU and can't be redefined.
+- **Custom debounce init timing:** `debounce_init()` fires before EEPROM config is loaded; defer
+  per-method allocation/selection to the first `debounce()` call so it sees the loaded settings.
+- **RAM vs PROGMEM tables:** rebuilding combo/keymap tables in RAM works on ARM, where `pgm_read_*`
+  is a plain memory read; on AVR the data must be in PROGMEM.
 - **WebHID:** the GUI must be served from `http://localhost` (or https); `file://` is blocked.
 
 ---
