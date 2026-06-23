@@ -9,6 +9,15 @@ QMK `rtcfg` keymap that exposes a raw-HID runtime-config interface (command byte
 Change tap dance, tapping term, Caps Word, Auto Shift, key assignments, and RGB state
 indicators **at runtime** — no recompile/reflash — and save/load configurations as files.
 
+> **Requires a one-time firmware flash.** These tools only work once the board is running the
+> custom `rtcfg` firmware build (see the **Companion firmware** note below) — the
+> stock Keychron firmware won't respond. The flash is a one-time step; after it, day-to-day
+> changes are made live over USB with no further reflashing.
+>
+> **VIA still works.** The `rtcfg` build keeps full VIA compatibility — VIA/Vial can still
+> connect and remap keys as usual. (Settings made through these tools live in the keyboard's
+> own config and simply aren't shown in the VIA GUI; they don't interfere with it.)
+
 Three front-ends over the same protocol:
 
 - **`q1config`** — a native desktop GUI (C++ / Dear ImGui) with a graphical keyboard, a
@@ -26,6 +35,16 @@ Three front-ends over the same protocol:
 **Adding this to another keyboard?** See [PORTING.md](PORTING.md) — how the firmware works
 and step-by-step instructions for adding a compatible real-time-config interface to any QMK
 board that lacks a Vial port.
+
+## Screenshots
+
+Native app:
+
+<img src="images/ss-2.png" width="800" alt="native app">
+
+Browser GUI:
+
+<img src="images/ss-1.png" width="807" alt="browser GUI">
 
 ## Requirements
 
@@ -112,13 +131,3 @@ slots as keycode names, and indicator colors as hex) — human-readable and shar
 `presets/mine.json` is the maintainer's personal setup; it's just a regular preset (load
 it, edit it, or branch new ones with `save`). All three front-ends read and write the same
 JSON, so presets are interchangeable between them.
-
-## Screenshots
-
-Native app:
-
-![native app](images/ss-2.png)
-
-Browser GUI:
-
-![browser GUI](images/ss-1.png)
