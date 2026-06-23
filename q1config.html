@@ -71,10 +71,17 @@
 
 <div id="bar">
   <button id="connect" class="primary">Connect</button>
+  <button id="demo">Try Demo</button>
   <span id="status">Not connected.</span>
 </div>
 
 <div id="app" style="display:none">
+
+  <div id="demobanner" style="display:none; background:#5a3a00; color:#ffd080; border-radius:6px;
+       padding:8px 12px; margin-bottom:12px; font-size:13px;">
+    Demo mode — no keyboard connected. Interactions are reflected in the UI but not saved.
+    <button id="exitdemo" style="margin-left:12px; font-size:12px;">Exit Demo</button>
+  </div>
 
   <h2>Keyboard</h2>
   <div class="panel">
@@ -326,36 +333,122 @@ function xfer(payload){
 const u16=(d,o)=>d[o]|(d[o+1]<<8);
 
 // 0xAC commands
-const getGlobal =()=>xfer([CMD,0x01]).then(d=>({tt:u16(d,2),slots:d[4],comboSlots:d[21],koSlots:d[22]}));
-const setTT     =v=>xfer([CMD,0x02,v&0xff,(v>>8)&0xff]);
-const setTdEn   =(i,on)=>xfer([CMD,0x03,i,on?1:0]);
-const setTdMode =(i,m)=>xfer([CMD,0x04,i,m]);
-const resetCfg  =()=>xfer([CMD,0x05]);
-const getTd     =i=>xfer([CMD,0x06,i]).then(d=>({tap:u16(d,3),sec:u16(d,5),en:d[7],mode:d[8],tappingTerm:u16(d,9),phFlags:d[11]}));
-const setTdKc   =(i,tap,sec)=>xfer([CMD,0x07,i,tap&0xff,(tap>>8)&0xff,sec&0xff,(sec>>8)&0xff]);
-const getFeat   =()=>xfer([CMD,0x09]).then(d=>({flags:u16(d,2),quicktap:u16(d,4),astimeout:u16(d,6),cwtimeout:u16(d,8),debounce:d[10],dbmethod:d[11],oneshot:u16(d,12)}));
-const setFlag   =(bit,on)=>xfer([CMD,0x0A,bit,on?1:0]);
-const setParam  =(pid,v)=>xfer([CMD,0x0B,pid,v&0xff,(v>>8)&0xff]);
-const getInd    =i=>xfer([CMD,0x0C,i]).then(d=>({en:d[3],r:d[4],g:d[5],b:d[6]}));
-const setInd    =(i,en,r,g,b)=>xfer([CMD,0x0D,i,en?1:0,r,g,b]);
-const getCombo  =i=>xfer([CMD,0x0E,i]).then(d=>({keys:[u16(d,3),u16(d,5),u16(d,7),u16(d,9)],output:u16(d,11),enabled:!!d[13]}));
-const setCombo  =(i,c)=>xfer([CMD,0x0F,i,c.keys[0]&0xff,(c.keys[0]>>8)&0xff,c.keys[1]&0xff,(c.keys[1]>>8)&0xff,
+let getGlobal =()=>xfer([CMD,0x01]).then(d=>({tt:u16(d,2),slots:d[4],comboSlots:d[21],koSlots:d[22]}));
+let setTT     =v=>xfer([CMD,0x02,v&0xff,(v>>8)&0xff]);
+let setTdEn   =(i,on)=>xfer([CMD,0x03,i,on?1:0]);
+let setTdMode =(i,m)=>xfer([CMD,0x04,i,m]);
+let resetCfg  =()=>xfer([CMD,0x05]);
+let getTd     =i=>xfer([CMD,0x06,i]).then(d=>({tap:u16(d,3),sec:u16(d,5),en:d[7],mode:d[8],tappingTerm:u16(d,9),phFlags:d[11]}));
+let setTdKc   =(i,tap,sec)=>xfer([CMD,0x07,i,tap&0xff,(tap>>8)&0xff,sec&0xff,(sec>>8)&0xff]);
+let getFeat   =()=>xfer([CMD,0x09]).then(d=>({flags:u16(d,2),quicktap:u16(d,4),astimeout:u16(d,6),cwtimeout:u16(d,8),debounce:d[10],dbmethod:d[11],oneshot:u16(d,12)}));
+let setFlag   =(bit,on)=>xfer([CMD,0x0A,bit,on?1:0]);
+let setParam  =(pid,v)=>xfer([CMD,0x0B,pid,v&0xff,(v>>8)&0xff]);
+let getInd    =i=>xfer([CMD,0x0C,i]).then(d=>({en:d[3],r:d[4],g:d[5],b:d[6]}));
+let setInd    =(i,en,r,g,b)=>xfer([CMD,0x0D,i,en?1:0,r,g,b]);
+let getCombo  =i=>xfer([CMD,0x0E,i]).then(d=>({keys:[u16(d,3),u16(d,5),u16(d,7),u16(d,9)],output:u16(d,11),enabled:!!d[13]}));
+let setCombo  =(i,c)=>xfer([CMD,0x0F,i,c.keys[0]&0xff,(c.keys[0]>>8)&0xff,c.keys[1]&0xff,(c.keys[1]>>8)&0xff,
                               c.keys[2]&0xff,(c.keys[2]>>8)&0xff,c.keys[3]&0xff,(c.keys[3]>>8)&0xff,
                               c.output&0xff,(c.output>>8)&0xff,c.enabled?1:0]);
-const getKo     =i=>xfer([CMD,0x10,i]).then(d=>({trigger:u16(d,3),replacement:u16(d,5),triggerMods:d[7],
+let getKo     =i=>xfer([CMD,0x10,i]).then(d=>({trigger:u16(d,3),replacement:u16(d,5),triggerMods:d[7],
                               suppressedMods:d[8],negativeMods:d[9],layers:d[10],options:d[11],enabled:!!d[12]}));
-const setKo     =(i,k)=>xfer([CMD,0x11,i,k.trigger&0xff,(k.trigger>>8)&0xff,k.replacement&0xff,(k.replacement>>8)&0xff,
+let setKo     =(i,k)=>xfer([CMD,0x11,i,k.trigger&0xff,(k.trigger>>8)&0xff,k.replacement&0xff,(k.replacement>>8)&0xff,
                               k.triggerMods&0xff,k.suppressedMods&0xff,k.negativeMods&0xff,k.layers&0xff,k.options&0xff,k.enabled?1:0]);
-const setTdTiming=(i,tt,f)=>xfer([CMD,0x14,i,tt&0xff,(tt>>8)&0xff,f]);
+let setTdTiming=(i,tt,f)=>xfer([CMD,0x14,i,tt&0xff,(tt>>8)&0xff,f]);
 // VIA dynamic keymap (big-endian keycode)
-const viaGet    =(l,r,c)=>xfer([0x04,l,r,c]).then(d=>(d[4]<<8)|d[5]);
-const viaSet    =(l,r,c,kc)=>xfer([0x05,l,r,c,(kc>>8)&0xff,kc&0xff]);
-const viaKmReset=()=>xfer([0x06]);
+let viaGet    =(l,r,c)=>xfer([0x04,l,r,c]).then(d=>(d[4]<<8)|d[5]);
+let viaSet    =(l,r,c,kc)=>xfer([0x05,l,r,c,(kc>>8)&0xff,kc&0xff]);
+let viaKmReset=()=>xfer([0x06]);
 
 const FF={CAPS_WORD:0,PERMISSIVE:1,HOKP:2,RETRO:3,AUTOSHIFT:4,CW_DOUBLE_SHIFT:5,CW_BOTH_SHIFTS:6};
 const PARAM={QUICKTAP:0,ASTIMEOUT:1,CWTIMEOUT:2,DEBOUNCE:3,DEBOUNCE_METHOD:4,ONESHOT:5};
 // debounce method index -> canonical name (must match keymap.c dispatcher order)
 const DEBOUNCE_METHODS=["none","sym_defer_g","sym_eager_pk","asym_eager_defer_pk"];
+
+//// ---- demo mode data ----
+const DEMO_DATA={
+  tapping_term:200,quick_tap_term:120,autoshift_timeout:175,caps_word_timeout:5000,
+  debounce_time:5,debounce_method:"sym_defer_g",oneshot_timeout:1000,
+  flags:{caps_word:true,permissive_hold:false,hold_on_other_key:false,retro_tapping:false,
+         auto_shift:false,caps_word_double_shift:true,caps_word_both_shifts:false},
+  tap_dance:[
+    {tap:"NO",secondary:"CAPS",mode:"double",enabled:true},
+    {tap:"HOME",secondary:"END",mode:"double",enabled:true},
+    {tap:"ESC",secondary:"ESC",mode:"double",enabled:false},
+    {tap:"SCLN",secondary:"COLN",mode:"hold",enabled:true},
+    {tap:"F9",secondary:"PSCR",mode:"double",enabled:true},
+    {tap:"F10",secondary:"SCRL",mode:"double",enabled:true},
+    {tap:"F11",secondary:"PAUS",mode:"double",enabled:true},
+    {tap:"F12",secondary:"NUM",mode:"double",enabled:true},
+    ...Array(24).fill({tap:"NO",secondary:"NO",mode:"double",enabled:false})
+  ],
+  combos:Array(16).fill({keys:["NO","NO","NO","NO"],output:"NO",enabled:false}),
+  key_overrides:Array(16).fill({trigger:"NO",replacement:"NO",trigger_mods:[],
+    suppressed_mods:[],negative_mods:[],layers:[],options:7,enabled:false}),
+  indicators:[{enabled:true,color:"#FF0000"},{enabled:true,color:"#00A000"},{enabled:true,color:"#808000"}],
+  keymap:[
+    // Layer 0: MAC_BASE (QWERTY)
+    ["ESC","1","2","3","4","5","6","7","8","9","0","MINS","EQL","DEL","NO",
+     "TAB","Q","W","E","R","T","Y","U","I","O","P","LBRC","RBRC","BSLS","PGUP",
+     "CAPS","A","S","D","F","G","H","J","K","L","SCLN","QUOT","ENT","NO","PGDN",
+     "LSFT","Z","X","C","V","B","N","M","COMM","DOT","SLSH","RSFT","UP","NO",
+     "LCTL","LOPT","LCMD","SPC","RCMD","ROPT","LEFT","DOWN","RGHT","NO","NO","NO"],
+    // Layer 1: MAC_FN (mostly empty for demo)
+    Array(96).fill("TRNS"),
+    // Layer 2: WIN_BASE (QWERTY with TD assignments)
+    ["ESC","1","2","3","4","5","6","7","8","TD4","TD5","TD6","TD7","DEL","NO",
+     "TAB","Q","W","E","R","T","Y","U","I","O","P","LBRC","RBRC","BSLS","PGUP",
+     "CAPS","A","S","D","F","G","H","J","K","L","TD3","QUOT","ENT","NO","PGDN",
+     "LSFT","Z","X","C","V","B","N","M","COMM","DOT","SLSH","RSFT","UP","NO",
+     "LCTL","LWIN","LALT","SPC","RALT","RWIN","LEFT","DOWN","RGHT","NO","NO","NO"],
+    // Layer 3: WIN_FN (mostly empty for demo)
+    Array(96).fill("TRNS")
+  ]
+};
+
+let g_demo=false;
+const _originals={};
+const _saveOriginals=()=>{
+  Object.assign(_originals,{getGlobal,getFeat,getTd,getCombo,getKo,getInd,viaGet,
+    setTT,setTdEn,setTdMode,resetCfg,setTdKc,setFlag,setParam,setInd,setCombo,setKo,setTdTiming,viaSet,viaKmReset});
+};
+_saveOriginals();
+
+function enterDemo(){
+  g_demo=true;
+  const d=DEMO_DATA;
+  const flagBits=FLAG_KEYS.reduce((m,k,i)=>m|(d.flags[k]?1<<i:0),0);
+  const noop=()=>Promise.resolve();
+
+  getGlobal=()=>Promise.resolve({tt:d.tapping_term,slots:32,comboSlots:16,koSlots:16});
+  getFeat=()=>Promise.resolve({flags:flagBits,quicktap:d.quick_tap_term,astimeout:d.autoshift_timeout,
+    cwtimeout:d.caps_word_timeout,debounce:d.debounce_time,dbmethod:DEBOUNCE_METHODS.indexOf(d.debounce_method),
+    oneshot:d.oneshot_timeout});
+  getTd=i=>{const t=d.tap_dance[i]||{tap:"NO",secondary:"NO",mode:"double",enabled:false};
+    const ph="permissive_hold"in t?t.permissive_hold:null;
+    return Promise.resolve({tap:kcParse(t.tap),sec:kcParse(t.secondary),en:t.enabled?1:0,
+      mode:t.mode==="hold"?1:0,tappingTerm:t.tapping_term||0,phFlags:ph===null?0:(0x02|(ph?0x01:0))});};
+  getCombo=i=>{const c=d.combos[i]||{keys:["NO","NO","NO","NO"],output:"NO",enabled:false};
+    return Promise.resolve({keys:c.keys.map(kcParse),output:kcParse(c.output),enabled:c.enabled});};
+  getKo=i=>{const k=d.key_overrides[i]||{trigger:"NO",replacement:"NO",trigger_mods:[],
+    suppressed_mods:[],negative_mods:[],layers:[],options:7,enabled:false};
+    return Promise.resolve({trigger:kcParse(k.trigger),replacement:kcParse(k.replacement),
+      triggerMods:listToMask(k.trigger_mods),suppressedMods:listToMask(k.suppressed_mods),
+      negativeMods:listToMask(k.negative_mods),layers:k.layers.reduce((m,l)=>m|(1<<l),0),
+      options:k.options??7,enabled:k.enabled});};
+  getInd=i=>{const v=d.indicators[i]||{enabled:false,color:"#000000"};
+    return Promise.resolve({en:v.enabled?1:0,r:parseInt(v.color.substr(1,2),16),
+      g:parseInt(v.color.substr(3,2),16),b:parseInt(v.color.substr(5,2),16)});};
+  viaGet=(l,r,c)=>Promise.resolve(kcParse(d.keymap[l][r*COLS+c]||"NO"));
+
+  setTT=noop;setTdEn=noop;setTdMode=noop;resetCfg=noop;setTdKc=noop;
+  setFlag=noop;setParam=noop;setInd=noop;setCombo=noop;setKo=noop;setTdTiming=noop;viaSet=noop;viaKmReset=noop;
+
+  $("#status").textContent="Demo mode — connect your keyboard to save changes.";
+  $("#app").style.display="block";
+  $("#demobanner").style.display="block";
+  $("#connect").textContent="Connect";
+  refreshAll();
+}
 
 //// ---- UI ----
 const U=42, GAP=4;
@@ -364,6 +457,9 @@ let curLayer=2, showAll=false;
 const $=s=>document.querySelector(s);
 
 async function connect(){
+  Object.assign(window,_originals);
+  g_demo=false;
+  $("#demobanner").style.display="none";
   if(!navigator.hid){ $("#status").textContent="WebHID unavailable — use Chrome/Edge over http(s)."; return; }
   const filters=[{vendorId:0x3434,productId:0x0610,usagePage:0xFF60,usage:0x61}];
   let devs=await navigator.hid.requestDevice({filters});
@@ -416,6 +512,7 @@ async function openEditor(ev,r,c,el){
 }
 
 $("#identify")?.addEventListener("click",async()=>{
+  if(g_demo){ $("#kbhint").textContent="Connect your keyboard to use Identify."; return; }
   $("#kbhint").textContent="Press a key on the keyboard…";
   try{
     await xfer([CMD,0x08]);
@@ -704,6 +801,8 @@ function loadPresetFile(){
 }
 
 $("#connect").addEventListener("click",connect);
+$("#demo").addEventListener("click",enterDemo);
+$("#exitdemo").addEventListener("click",()=>location.reload());
 $("#savep").addEventListener("click",savePreset);
 $("#loadp").addEventListener("click",loadPresetFile);
 $("#rcfg").addEventListener("click",async()=>{ if(confirm("Reset config to defaults?")){
