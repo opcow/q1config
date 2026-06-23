@@ -167,9 +167,9 @@
   "debounce_time": 5,
   "flags": {
     "auto_shift": false,
-    "caps_word": false,
+    "caps_word": true,
     "caps_word_both_shifts": false,
-    "caps_word_double_shift": false,
+    "caps_word_double_shift": true,
     "hold_on_other_key": false,
     "permissive_hold": false,
     "retro_tapping": false
@@ -177,15 +177,15 @@
   "indicators": [
     {
       "color": "#FF0000",
-      "enabled": false
+      "enabled": true
     },
     {
       "color": "#00A000",
-      "enabled": false
+      "enabled": true
     },
     {
       "color": "#808000",
-      "enabled": false
+      "enabled": true
     }
   ],
   "key_overrides": [
@@ -749,196 +749,260 @@
   "schema": 1,
   "tap_dance": [
     {
-      "enabled": false,
+      "enabled": true,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "CAPS",
-      "tap": "CAPS"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
-      "enabled": false,
+      "enabled": true,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "END",
-      "tap": "HOME"
+      "tap": "HOME",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "ESC",
-      "tap": "ESC"
+      "tap": "ESC",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "COLN",
-      "tap": "SCLN"
+      "tap": "SCLN",
+      "tapping_term": 0
     },
     {
-      "enabled": false,
+      "enabled": true,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "PSCR",
-      "tap": "F9"
+      "tap": "F9",
+      "tapping_term": 0
     },
     {
-      "enabled": false,
+      "enabled": true,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "SCRL",
-      "tap": "F10"
+      "tap": "F10",
+      "tapping_term": 0
     },
     {
-      "enabled": false,
+      "enabled": true,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "PAUS",
-      "tap": "F11"
+      "tap": "F11",
+      "tapping_term": 0
     },
     {
-      "enabled": false,
+      "enabled": true,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NUM",
-      "tap": "F12"
+      "tap": "F12",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     },
     {
       "enabled": false,
       "mode": "double",
+      "permissive_hold": null,
       "secondary": "NO",
-      "tap": "NO"
+      "tap": "NO",
+      "tapping_term": 0
     }
   ],
   "tapping_term": 200
