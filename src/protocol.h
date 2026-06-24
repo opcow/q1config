@@ -7,7 +7,7 @@ static constexpr uint8_t CMD = 0xAC;
 // Total tap-dance slots (must match TD_SLOT_COUNT in the firmware keymap).
 static constexpr int TD_SLOT_COUNT = 32;
 // RGB state indicators (must match INDICATOR_COUNT in the firmware).
-static constexpr int INDICATOR_COUNT = 8;
+static constexpr int INDICATOR_COUNT = 9;
 // Dynamic-keymap dimensions (must match the firmware: 4 layers, 6x16 matrix).
 static constexpr int KM_LAYERS = 4;
 static constexpr int KM_ROWS   = 6;
@@ -26,7 +26,10 @@ struct GlobalState { uint16_t tt; uint8_t slots; uint8_t comboSlots; uint8_t koS
 struct FeatState   { uint16_t flags; uint16_t quicktap; uint16_t astimeout; uint16_t cwtimeout; uint16_t debounce; uint8_t debounceMethod; uint16_t oneshotTimeout; };
 struct TdSlot      { uint16_t tap; uint16_t sec; bool enabled; uint8_t mode;
                      uint16_t tappingTerm; uint8_t phFlags; }; // mode: 0=double 1=hold
-struct IndState    { bool enabled; uint8_t r, g, b; };
+// scope: 0 board, 1 keys, 2 rows, 3 cols. count = items[] in use (0..4). items[]:
+// KEYS = packed (row<<4)|col; ROWS/COLS = row/col index.
+enum { IND_SCOPE_BOARD = 0, IND_SCOPE_KEYS = 1, IND_SCOPE_ROWS = 2, IND_SCOPE_COLS = 3 };
+struct IndState    { bool enabled; uint8_t r, g, b; uint8_t scope; uint8_t count; uint8_t items[4]; };
 struct Combo       { uint16_t keys[COMBO_MAX_KEYS]; uint16_t output; bool enabled; };
 struct KeyOverride { uint16_t trigger; uint16_t replacement; uint8_t triggerMods;
                      uint8_t suppressedMods; uint8_t negativeMods; uint8_t layers;
@@ -51,7 +54,8 @@ FeatState   getFeat(HidDevice& d);
 void        setFlag(HidDevice& d, int bit, bool on);
 void        setParam(HidDevice& d, uint8_t pid, uint16_t val);
 IndState    getInd(HidDevice& d, int idx);
-void        setInd(HidDevice& d, int idx, bool en, uint8_t r, uint8_t g, uint8_t b);
+void        setInd(HidDevice& d, int idx, bool en, uint8_t r, uint8_t g, uint8_t b,
+                   uint8_t scope = 0, uint8_t count = 0, const uint8_t* items = nullptr);
 Combo       getCombo(HidDevice& d, int idx);
 void        setCombo(HidDevice& d, int idx, const Combo& c);
 KeyOverride getKo(HidDevice& d, int idx);

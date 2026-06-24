@@ -32,8 +32,8 @@ Request byte 0 = `0xAC`, byte 1 = subcommand. For `0xAC` replies, **byte 1 is a 
 | 09 | GET_FEATURES | — | `[2..3]` flags, `[4..5]` quick_tap_term, `[6..7]` autoshift_timeout, `[8..9]` caps_word_timeout, `[10]` debounce_time, `[11]` debounce_method, `[12..13]` oneshot_timeout |
 | 0A | SET_FLAG | bit, val(0/1) | features |
 | 0B | SET_PARAM | id(0=quicktap,1=astimeout,2=cwtimeout,3=debounce,4=debounce_method,5=oneshot_timeout), lo, hi | features |
-| 0C | GET_INDICATOR | idx | `[2]` idx, `[3]` enabled, `[4]` r, `[5]` g, `[6]` b |
-| 0D | SET_INDICATOR | idx, enabled, r, g, b | `[2]` idx |
+| 0C | GET_INDICATOR | idx | `[2]` idx, `[3]` enabled, `[4]` r, `[5]` g, `[6]` b, `[7]` scope, `[8]` count, `[9..12]` items |
+| 0D | SET_INDICATOR | idx, enabled, r, g, b, scope, count, items[4] | `[2]` idx |
 | 0E | GET_COMBO | idx | `[2]` idx, `[3..10]` key0..3 (LE u16 each), `[11..12]` output (LE), `[13]` enabled |
 | 0F | SET_COMBO | idx, key0..3 (LE u16 ×4), output (LE), enabled | `[2]` idx |
 | 10 | GET_KO | idx | `[2]` idx, `[3..4]` trigger (LE), `[5..6]` replacement (LE), `[7]` trigger_mods, `[8]` suppressed_mods, `[9]` negative_mod_mask, `[10]` layers, `[11]` options, `[12]` enabled |
@@ -47,11 +47,21 @@ All multi-byte scalars are **little-endian**.
 (hold both shifts → Caps Word). Bits 5/6 only act while caps_word (bit 0) is enabled.
 
 **Indicators (idx):** 0 Caps Lock, 1 Caps Word, 2 Win FN layer, 3 Num Lock, 4 Scroll Lock,
-5 Mac FN layer, 6 Windows mode (default layer = Win base), 7 one-shot mod armed. Only one
-paints at a time, in that priority order (Caps Lock highest), each gated on its enabled flag.
-"Windows mode" is persistent — it tints the whole board the entire time it's active. The FN/OS
-layer indices are board-overridable (`RTCFG_FN_INDICATOR_LAYER` / `RTCFG_MAC_FN_INDICATOR_LAYER`
-/ `RTCFG_OS_MODE_LAYER` in firmware `config.h`).
+5 Mac FN layer, 6 Windows mode (default layer = Win base), 7 Mac mode (default layer = Mac base),
+8 one-shot mod armed. Each enabled, active indicator paints its scope; they are layered by
+priority (Caps Lock highest, the OS-mode baselines lowest) so where two scopes share a key the
+higher-priority indicator wins. "Windows mode" and "Mac mode" are persistent — they tint their
+scope the entire time they're active. The FN/OS layer indices are board-overridable
+(`RTCFG_FN_INDICATOR_LAYER` / `RTCFG_MAC_FN_INDICATOR_LAYER` / `RTCFG_OS_MODE_LAYER` /
+`RTCFG_OS_MAC_LAYER` in firmware `config.h`).
+
+**Indicator scope:** `scope` selects what an indicator lights — `0` whole board, `1` keys,
+`2` rows, `3` columns. `count` (0..4) is how many `items[4]` entries are used. For `keys`, each
+item is a packed matrix position `(row << 4) | col`; for `rows`/`cols`, each item is a matrix
+row/column index (whole row/column lights). Rows/columns are *matrix* rows/cols — matrix rows
+line up with physical rows, but matrix columns are jagged on staggered boards. In a JSON preset
+this is `"scope": "board"|"keys"|"rows"|"cols"` plus `"items"` (keys: `[[row,col],…]`; rows/cols:
+`[idx,…]`; board: `[]`). A missing `scope` means whole board.
 
 **Debounce methods (idx):** 0 none, 1 sym_defer_g (default), 2 sym_eager_pk,
 3 asym_eager_defer_pk. A `debounce_time` of 0 means no debounce regardless of method.
@@ -98,8 +108,8 @@ Layers: 0 MAC_BASE, 1 MAC_FN, 2 WIN_BASE, 3 WIN_FN. Matrix is 6 rows × 16 cols.
 
 ## EEPROM / versioning
 
-Config persists in QMK's user data block (600 bytes). `EECONFIG_USER_DATA_VERSION` in the
-firmware's `config.h` (currently `0x00514412`) is bumped whenever the struct layout changes;
+Config persists in QMK's user data block (656 bytes). `EECONFIG_USER_DATA_VERSION` in the
+firmware's `config.h` (currently `0x00514415`) is bumped whenever the struct layout changes;
 on the next flash the stored config is discarded and firmware defaults reapplied.
 
 **One-time keymap reset:** growing the user block shifts the dynamic-keymap EEPROM base (it
@@ -128,7 +138,7 @@ changes `EECONFIG_USER_DATA_SIZE`, run **Reset keymap** once to restore key assi
   "key_overrides": [ { "trigger": "1", "replacement": "F1", "trigger_mods": ["LSft"],
                       "suppressed_mods": [], "negative_mods": [], "layers": [0,2],
                       "options": 7, "enabled": true }, … 16 ],
-  "indicators": [ { "enabled": true, "color": "#FF0000" }, … 8 ],
+  "indicators": [ { "enabled": true, "color": "#FF0000", "scope": "board", "items": [] }, … 9 ],
   "keymap": [ [ "ESC","F1", … 96 per layer (6×16, row-major) ], … 4 layers ]
 }
 ```

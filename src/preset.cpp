@@ -51,12 +51,21 @@ nlohmann::json readConfig(HidDevice& d) {
                       {"tapping_term", s.tappingTerm}, {"permissive_hold", ph}});
     }
 
+    static const char* SCOPE_NAMES[] = {"board", "keys", "rows", "cols"};
     nlohmann::json ind = nlohmann::json::array();
     for (int i = 0; i < INDICATOR_COUNT; i++) {
         auto v = getInd(d, i);
         char hex[8];
         snprintf(hex, sizeof(hex), "#%02X%02X%02X", v.r, v.g, v.b);
-        ind.push_back({{"enabled", v.enabled}, {"color", hex}});
+        // items: KEYS = [row,col] pairs; ROWS/COLS = indices; BOARD = [].
+        nlohmann::json items = nlohmann::json::array();
+        for (int k = 0; k < v.count && k < 4; k++) {
+            if (v.scope == IND_SCOPE_KEYS) items.push_back({v.items[k] >> 4, v.items[k] & 0x0F});
+            else                          items.push_back(v.items[k]);
+        }
+        uint8_t sc = v.scope > IND_SCOPE_COLS ? IND_SCOPE_BOARD : v.scope;
+        ind.push_back({{"enabled", v.enabled}, {"color", hex},
+                       {"scope", SCOPE_NAMES[sc]}, {"items", items}});
     }
 
     nlohmann::json combos = nlohmann::json::array();
@@ -174,12 +183,33 @@ int writeConfig(HidDevice& d, const nlohmann::json& p) {
         }
     }
 
+    auto scopeIdx = [](const std::string& s) -> uint8_t {
+        if (s == "keys") return IND_SCOPE_KEYS;
+        if (s == "rows") return IND_SCOPE_ROWS;
+        if (s == "cols") return IND_SCOPE_COLS;
+        return IND_SCOPE_BOARD;
+    };
     auto& pi = p["indicators"]; auto& ci = cur["indicators"];
     for (int i = 0; i < INDICATOR_COUNT && i < (int)pi.size(); i++) {
-        if (ci[i]["enabled"] != pi[i]["enabled"] || ci[i]["color"] != pi[i]["color"]) {
+        auto pscope = pi[i].value("scope", std::string("board"));
+        auto cscope = ci[i].value("scope", std::string("board"));
+        auto pitems = pi[i].value("items", nlohmann::json::array());
+        auto citems = ci[i].value("items", nlohmann::json::array());
+        if (ci[i]["enabled"] != pi[i]["enabled"] || ci[i]["color"] != pi[i]["color"]
+            || cscope != pscope || citems != pitems) {
             std::string h = pi[i]["color"];
             auto x = [&](int o) { return (uint8_t)std::stoul(h.substr(o, 2), nullptr, 16); };
-            setInd(d, i, pi[i]["enabled"], x(1), x(3), x(5)); n++;
+            uint8_t sc = scopeIdx(pscope), items[4] = {0, 0, 0, 0}, cnt = 0;
+            for (auto& it : pitems) {
+                if (cnt >= 4) break;
+                if (sc == IND_SCOPE_KEYS) {
+                    int row = it[0].get<int>(), col = it[1].get<int>();
+                    items[cnt++] = (uint8_t)((row << 4) | (col & 0x0F));
+                } else {
+                    items[cnt++] = (uint8_t)it.get<int>();
+                }
+            }
+            setInd(d, i, pi[i]["enabled"], x(1), x(3), x(5), sc, cnt, items); n++;
         }
     }
 

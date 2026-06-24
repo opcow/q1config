@@ -59,10 +59,14 @@ void setParam(HidDevice& d, uint8_t pid, uint16_t v) {
 }
 IndState getInd(HidDevice& d, int i) {
     auto r = d.xfer({CMD, 0x0C, (uint8_t)i});
-    return {(bool)r[3], r[4], r[5], r[6]};
+    return {(bool)r[3], r[4], r[5], r[6], r[7], r[8], {r[9], r[10], r[11], r[12]}};
 }
-void setInd(HidDevice& d, int i, bool en, uint8_t r, uint8_t g, uint8_t b) {
-    d.xfer({CMD, 0x0D, (uint8_t)i, (uint8_t)(en ? 1 : 0), r, g, b});
+void setInd(HidDevice& d, int i, bool en, uint8_t r, uint8_t g, uint8_t b,
+            uint8_t scope, uint8_t count, const uint8_t* items) {
+    uint8_t i0 = items ? items[0] : 0, i1 = items ? items[1] : 0;
+    uint8_t i2 = items ? items[2] : 0, i3 = items ? items[3] : 0;
+    d.xfer({CMD, 0x0D, (uint8_t)i, (uint8_t)(en ? 1 : 0), r, g, b,
+            scope, count, i0, i1, i2, i3});
 }
 
 Combo getCombo(HidDevice& d, int i) {

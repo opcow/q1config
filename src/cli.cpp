@@ -204,11 +204,24 @@ int cli_main(int argc, char* argv[]) {
     if (!strcmp(cmd, "indicators")) {
         if (!connect()) return 1;
         const char* names[] = {"Caps Lock", "Caps Word", "Win FN layer", "Num Lock",
-                              "Scroll Lock", "Mac FN layer", "Windows mode", "One-shot mod"};
+                              "Scroll Lock", "Mac FN layer", "Windows mode", "Mac mode",
+                              "One-shot mod"};
         for (int i = 0; i < INDICATOR_COUNT; i++) {
             auto v = getInd(dev, i);
-            printf("%-14s  %s  #%02X%02X%02X\n",
+            printf("%-14s  %s  #%02X%02X%02X  ",
                    names[i], v.enabled ? "on " : "off", v.r, v.g, v.b);
+            if (v.scope == IND_SCOPE_BOARD || v.count == 0) {
+                printf("whole board\n");
+            } else if (v.scope == IND_SCOPE_KEYS) {
+                printf("keys:");
+                for (int k = 0; k < v.count && k < 4; k++)
+                    printf(" r%dc%d", v.items[k] >> 4, v.items[k] & 0x0F);
+                printf("\n");
+            } else {
+                printf("%s:", v.scope == IND_SCOPE_ROWS ? "rows" : "cols");
+                for (int k = 0; k < v.count && k < 4; k++) printf(" %d", v.items[k]);
+                printf("\n");
+            }
         }
         return 0;
     }

@@ -59,6 +59,19 @@
   #kcpicker { position:fixed; inset:0; background:#000a; z-index:100; display:none;
               align-items:center; justify-content:center; }
   #kcpicker.show { display:flex; }
+  #scopepicker { position:fixed; inset:0; background:#000a; z-index:101; display:none;
+                 align-items:center; justify-content:center; }
+  #scopepicker.show { display:flex; }
+  #scopepanel { background:var(--panel); border:1px solid #666; border-radius:10px;
+                box-shadow:0 12px 40px #000c; max-width:94vw; max-height:88vh;
+                display:flex; flex-direction:column; overflow:auto; padding:12px 14px; }
+  #scopehead { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  #scopehead .title { font-size:13px; color:var(--muted); flex:1; }
+  #scopekb { position:relative; margin:8px 0; }
+  #scopekb .key.sel { color:#000; }
+  #scopemodes { display:inline-flex; gap:4px; }
+  #scopemodes button.on { background:var(--accent); border-color:#258; color:#fff; }
+  .scopebtn { font-size:11px; padding:2px 8px; }
   #kcpanel { background:var(--panel); border:1px solid #666; border-radius:10px;
              box-shadow:0 12px 40px #000c; width:560px; max-width:92vw; max-height:80vh;
              display:flex; flex-direction:column; overflow:hidden; }
@@ -187,6 +200,13 @@
     <button id="kccancel">Cancel</button></div>
   <div id="kctabs"></div>
   <div id="kcgrid"></div>
+</div></div>
+
+<div id="scopepicker"><div id="scopepanel">
+  <div id="scopehead"><span class="title"></span>
+    <span id="scopemodes"></span>
+    <button id="scopedone">Done</button></div>
+  <div id="scopekb"></div>
 </div></div>
 
 <script>
@@ -380,8 +400,11 @@ let setTdKc   =(i,tap,sec)=>xfer([CMD,0x07,i,tap&0xff,(tap>>8)&0xff,sec&0xff,(se
 let getFeat   =()=>xfer([CMD,0x09]).then(d=>({flags:u16(d,2),quicktap:u16(d,4),astimeout:u16(d,6),cwtimeout:u16(d,8),debounce:d[10],dbmethod:d[11],oneshot:u16(d,12)}));
 let setFlag   =(bit,on)=>xfer([CMD,0x0A,bit,on?1:0]);
 let setParam  =(pid,v)=>xfer([CMD,0x0B,pid,v&0xff,(v>>8)&0xff]);
-let getInd    =i=>xfer([CMD,0x0C,i]).then(d=>({en:d[3],r:d[4],g:d[5],b:d[6]}));
-let setInd    =(i,en,r,g,b)=>xfer([CMD,0x0D,i,en?1:0,r,g,b]);
+// scope 0 board,1 keys,2 rows,3 cols; count = items in use; items: KEYS (row<<4)|col, ROWS/COLS idx.
+let getInd    =i=>xfer([CMD,0x0C,i]).then(d=>({en:d[3],r:d[4],g:d[5],b:d[6],
+                 scope:d[7],count:d[8],items:[d[9],d[10],d[11],d[12]]}));
+let setInd    =(i,en,r,g,b,scope=0,count=0,items=[0,0,0,0])=>
+                 xfer([CMD,0x0D,i,en?1:0,r,g,b,scope,count,items[0],items[1],items[2],items[3]]);
 let getCombo  =i=>xfer([CMD,0x0E,i]).then(d=>({keys:[u16(d,3),u16(d,5),u16(d,7),u16(d,9)],output:u16(d,11),enabled:!!d[13]}));
 let setCombo  =(i,c)=>xfer([CMD,0x0F,i,c.keys[0]&0xff,(c.keys[0]>>8)&0xff,c.keys[1]&0xff,(c.keys[1]>>8)&0xff,
                               c.keys[2]&0xff,(c.keys[2]>>8)&0xff,c.keys[3]&0xff,(c.keys[3]>>8)&0xff,
@@ -425,7 +448,7 @@ const DEMO_DATA={
     suppressed_mods:[],negative_mods:[],layers:[],options:7,enabled:false}),
   indicators:[{enabled:true,color:"#FF0000"},{enabled:true,color:"#00A000"},{enabled:true,color:"#808000"},
     {enabled:false,color:"#0000FF"},{enabled:false,color:"#800080"},{enabled:false,color:"#008080"},
-    {enabled:false,color:"#0040FF"},{enabled:false,color:"#FF6000"}],
+    {enabled:false,color:"#0040FF"},{enabled:false,color:"#C0C0C0"},{enabled:false,color:"#FF6000"}],
   keymap:[
     ["ESC","BRID","BRIU","MCTL","LPAD","RGB_VAD","RGB_VAI","MPRV","MPLY","MNXT","MUTE","VOLD","VOLU","DEL","NO","MUTE","GRV","1","2","3","4","5","6","7","8","9","0","MINS","EQL","BSPC","NO","PGUP","TAB","Q","W","E","R","T","Y","U","I","O","P","LBRC","RBRC","BSLS","NO","PGDN","CAPS","A","S","D","F","G","H","J","K","L","SCLN","QUOT","NO","ENT","NO","HOME","LSFT","NO","Z","X","C","V","B","N","M","COMM","DOT","SLSH","NO","RSFT","UP","NO","LCTL","LOpt","LCmd","NO","NO","NO","SPC","NO","NO","NO","LCmd","MO(1)","RCTL","LEFT","DOWN","RGHT"],
     ["TRNS","F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12","TRNS","NO","RGB_TOG","TRNS","Cortana","Siri","BT1","TRNS","TRNS","TRNS","TRNS","TRNS","TRNS","TRNS","TRNS","TRNS","TRNS","NO","TRNS","RGB_TOG","RGB_MOD","RGB_VAI","RGB_HUI","RGB_SAI","RGB_SPI","TRNS","TRNS","TRNS","TRNS","TRNS","TRNS","TRNS","TRNS","NO","TRNS","TRNS","RGB_RMOD","RGB_VAD","RGB_HUD","RGB_SAD","RGB_SPD","TRNS","TRNS","TRNS","TRNS","TRNS","TRNS","NO","TRNS","NO","END","TRNS","NO","TRNS","TRNS","TRNS","TRNS","BT2","NK_TOGG","TRNS","TRNS","TRNS","TRNS","NO","TRNS","TRNS","NO","TRNS","TRNS","TRNS","NO","NO","NO","TRNS","NO","NO","NO","TRNS","TRNS","TRNS","TRNS","TRNS","TRNS"],
@@ -465,9 +488,13 @@ function enterDemo(){
       triggerMods:listToMask(k.trigger_mods),suppressedMods:listToMask(k.suppressed_mods),
       negativeMods:listToMask(k.negative_mods),layers:k.layers.reduce((m,l)=>m|(1<<l),0),
       options:k.options??7,enabled:k.enabled});};
-  getInd=i=>{const v=d.indicators[i]||{enabled:false,color:"#000000"};
+  getInd=i=>{const v=d.indicators[i]||{enabled:false,color:"#000000",scope:"board",items:[]};
+    const sc=SCOPE_IDX[v.scope||"board"]||0;
+    const its=(v.items||[]).slice(0,4).map(it=>sc===1?((it[0]<<4)|(it[1]&0x0F)):it);
+    while(its.length<4)its.push(0);
     return Promise.resolve({en:v.enabled?1:0,r:parseInt(v.color.substr(1,2),16),
-      g:parseInt(v.color.substr(3,2),16),b:parseInt(v.color.substr(5,2),16)});};
+      g:parseInt(v.color.substr(3,2),16),b:parseInt(v.color.substr(5,2),16),
+      scope:sc,count:(v.items||[]).length,items:its});};
   viaGet=(l,r,c)=>Promise.resolve(safeParse(d.keymap[l][r*COLS+c]||"NO"));
 
   setTT=noop;setTdEn=noop;setTdMode=noop;resetCfg=noop;setTdKc=noop;
@@ -674,21 +701,86 @@ async function buildFeatures(){
 // persistent — when enabled it tints the whole board the entire time you're in
 // Windows mode, replacing the normal RGB effect.
 const IND_NAMES=["Caps Lock","Caps Word","Win FN layer","Num Lock","Scroll Lock",
-                 "Mac FN layer","Windows mode","One-shot mod"];
+                 "Mac FN layer","Windows mode","Mac mode","One-shot mod"];
+const SCOPE_NAMES=["board","keys","rows","cols"];
+const SCOPE_IDX={board:0,keys:1,rows:2,cols:3};
+
+// Scope picker: choose Board / Keys / Rows / Columns, then click keys to select
+// (up to 4). Rows/Columns are matrix rows/cols; clicking a key toggles its whole
+// row/column. items hold packed (row<<4)|col for keys, or row/col index.
+let scopeState=null, scopeResolver=null;
+function pickScope(state,name,colorHex){
+  scopeState={scope:state.scope||0, items:(state.items||[]).slice(0,state.count||0)};
+  const valOf=(r,c)=> scopeState.scope===1?((r<<4)|(c&0x0F)) : scopeState.scope===2?r : scopeState.scope===3?c : 0;
+  const isSel=(r,c)=> scopeState.scope!==0 && scopeState.items.includes(valOf(r,c));
+  const upd=()=>$("#scopehead .title").textContent = scopeState.scope===0
+    ? `"${name}" lights the whole board`
+    : `Click to toggle ${["","keys","rows","columns"][scopeState.scope]} for "${name}" — selected ${scopeState.items.length}/4`;
+  const renderModes=()=>{
+    const box=$("#scopemodes"); box.innerHTML="";
+    ["Board","Keys","Rows","Columns"].forEach((m,mi)=>{
+      const b=document.createElement("button"); b.textContent=m;
+      if(scopeState.scope===mi) b.classList.add("on");
+      b.onclick=()=>{ if(scopeState.scope!==mi){ scopeState.scope=mi; scopeState.items=[];
+        renderModes(); render(); upd(); } };
+      box.appendChild(b);
+    });
+  };
+  const render=()=>{
+    const kb=$("#scopekb"); kb.innerHTML=""; let maxX=0,maxY=0;
+    for(const [r,c,x,y,w] of LAYOUT){
+      const el=document.createElement("div");
+      el.className="key"; el.style.left=(x*U)+"px"; el.style.top=(y*U)+"px";
+      el.style.width=(w*U-GAP)+"px"; el.style.height=(U-GAP)+"px";
+      const main=$(`#kb .key[data-r="${r}"][data-c="${c}"]`);
+      el.textContent=main?main.textContent:`${r},${c}`;
+      if(isSel(r,c)){ el.classList.add("sel"); el.style.background=colorHex; }
+      el.onclick=()=>{ if(scopeState.scope===0) return;
+        const v=valOf(r,c), j=scopeState.items.indexOf(v);
+        if(j>=0) scopeState.items.splice(j,1); else if(scopeState.items.length<4) scopeState.items.push(v);
+        render(); upd(); };
+      kb.appendChild(el); maxX=Math.max(maxX,x+w); maxY=Math.max(maxY,y+1);
+    }
+    kb.style.height=(maxY*U)+"px"; kb.style.width=(maxX*U)+"px";
+  };
+  renderModes(); upd(); render();
+  $("#scopepicker").classList.add("show");
+  return new Promise(res=>{ scopeResolver=res; });
+}
+function closeScope(){
+  $("#scopepicker").classList.remove("show");
+  if(scopeResolver){ const r=scopeResolver; scopeResolver=null;
+    const items=scopeState.items.slice(0,4), count=items.length;
+    while(items.length<4) items.push(0);
+    r({scope:scopeState.scope,count,items}); }
+}
+$("#scopedone").onclick=closeScope;
+$("#scopepicker").onclick=e=>{ if(e.target.id==="scopepicker") closeScope(); };
+
+const scopeLabel=st=>{
+  if(!st.scope||!st.count) return "board";
+  const w=["","key","row","col"][st.scope];
+  return `${st.count} ${w}${st.count>1?"s":""}`;
+};
 async function buildIndicators(){
   const box=$("#indicators"); box.innerHTML="";
   for(let i=0;i<IND_NAMES.length;i++){
     const v=await getInd(i);
     const hex="#"+[v.r,v.g,v.b].map(x=>x.toString(16).padStart(2,"0")).join("");
+    const st={scope:v.scope||0, count:v.count||0, items:(v.items||[0,0,0,0]).slice()};
     const div=document.createElement("div"); div.className="row";
     div.innerHTML=`<label>${IND_NAMES[i]}</label>
       <input type="checkbox" class="en" ${v.en?"checked":""}>
-      <input type="color" class="col" value="${hex}">`;
+      <input type="color" class="col" value="${hex}">
+      <button class="scopebtn">${scopeLabel(st)}</button>`;
     box.appendChild(div);
-    const en=div.querySelector(".en"), col=div.querySelector(".col");
+    const en=div.querySelector(".en"), col=div.querySelector(".col"), sb=div.querySelector(".scopebtn");
     const save=()=>{ const h=col.value; const r=parseInt(h.substr(1,2),16),
-      g=parseInt(h.substr(3,2),16), b=parseInt(h.substr(5,2),16); setInd(i,en.checked,r,g,b); };
+      g=parseInt(h.substr(3,2),16), b=parseInt(h.substr(5,2),16);
+      setInd(i,en.checked,r,g,b,st.scope,st.count,st.items); };
     en.onchange=save; col.onchange=save;
+    sb.onclick=async()=>{ const res=await pickScope(st,IND_NAMES[i],col.value);
+      st.scope=res.scope; st.count=res.count; st.items=res.items; sb.textContent=scopeLabel(st); save(); };
   }
 }
 
@@ -782,7 +874,9 @@ async function readConfig(){
   const indicators=[];
   for(let i=0;i<IND_NAMES.length;i++){ const v=await getInd(i);
     const hex="#"+[v.r,v.g,v.b].map(x=>x.toString(16).padStart(2,"0")).join("").toUpperCase();
-    indicators.push({enabled:!!v.en,color:hex}); }
+    // items: KEYS = [row,col] pairs; ROWS/COLS = indices; BOARD = [].
+    const items=(v.items||[]).slice(0,v.count||0).map(it=>v.scope===1?[it>>4,it&0x0F]:it);
+    indicators.push({enabled:!!v.en,color:hex,scope:SCOPE_NAMES[v.scope||0],items}); }
   // Full dynamic keymap (all layers, row-major) so a preset can reproduce
   // key->TD (and any other) assignments on stock firmware.
   const keymap=[];
@@ -827,9 +921,15 @@ async function writeConfig(p){
         negativeMods:listToMask(t.negative_mods),
         layers:(t.layers||[]).reduce((m,l)=>m|(1<<l),0),options:t.options??7,enabled:!!t.enabled}); n++; } }
   for(let i=0;i<IND_NAMES.length && i<(p.indicators||[]).length;i++){ const c=cur.indicators[i],t=p.indicators[i];
-    if(c.enabled!==t.enabled||c.color.toUpperCase()!==t.color.toUpperCase()){
-      const h=t.color; await setInd(i,t.enabled?1:0,
-        parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),parseInt(h.substr(5,2),16)); n++; } }
+    const citems=JSON.stringify([c.scope||"board",c.items||[]]);
+    const titems=JSON.stringify([t.scope||"board",t.items||[]]);
+    if(c.enabled!==t.enabled||c.color.toUpperCase()!==t.color.toUpperCase()||citems!==titems){
+      const h=t.color, sc=SCOPE_IDX[t.scope||"board"]||0;
+      const items=(t.items||[]).slice(0,4).map(it=>sc===1?((it[0]<<4)|(it[1]&0x0F)):it);
+      const count=items.length; while(items.length<4) items.push(0);
+      await setInd(i,t.enabled?1:0,
+        parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),parseInt(h.substr(5,2),16),
+        sc,count,items); n++; } }
   if(p.keymap){
     for(let l=0;l<LAYERS && l<p.keymap.length;l++)
       for(let i=0;i<ROWS*COLS && i<p.keymap[l].length;i++)

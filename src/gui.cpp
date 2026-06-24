@@ -46,7 +46,8 @@ static void popPrimaryButtonStyle() { ImGui::PopStyleColor(3); }
 static const char* LAYER_NAMES[] = {"0 MAC_BASE","1 MAC_FN","2 WIN_BASE","3 WIN_FN"};
 // Slots are named TD0..TDn so a slot's name is its index (matches the firmware).
 static const char* IND_NAMES[]   = {"Caps Lock","Caps Word","Win FN layer","Num Lock",
-                                    "Scroll Lock","Mac FN layer","Windows mode","One-shot mod"};
+                                    "Scroll Lock","Mac FN layer","Windows mode","Mac mode",
+                                    "One-shot mod"};
 static const char* FLAG_NAMES[]  = {"Caps Word","Permissive hold","Hold on other key press","Retro tapping","Auto Shift"};
 static const char* DB_METHOD_LABELS[] = {"None","Symmetric Defer","Symmetric Eager","Asymmetric Eager/Defer"};
 
@@ -660,6 +661,120 @@ static void drawKeyOverrides() {
 }
 
 // ── indicators panel ──────────────────────────────────────────────────────────
+static int  g_scopeOpen = -1;    // indicator index whose key-scope popup is open, -1 = none
+static bool g_scopeOpenReq = false;  // request to open the popup next draw (ID-stack safe)
+
+// Push the current state of indicator i to the firmware, scope included.
+static void pushInd(int i) {
+    try {
+        setInd(g_dev, i, g_ind[i].enabled, g_ind[i].r, g_ind[i].g, g_ind[i].b,
+               g_ind[i].scope, g_ind[i].count, g_ind[i].items);
+    } catch (...) {}
+}
+
+static int indItemFind(const IndState& s, uint8_t val) {
+    for (int k = 0; k < s.count && k < 4; k++) if (s.items[k] == val) return k;
+    return -1;
+}
+static void indItemToggle(IndState& s, uint8_t val) {
+    int at = indItemFind(s, val);
+    if (at >= 0) {                       // remove and shift down
+        for (int k = at; k + 1 < s.count && k < 3; k++) s.items[k] = s.items[k + 1];
+        s.count--;
+    } else if (s.count < 4) {            // add
+        s.items[s.count++] = val;
+    }
+}
+// The item value a key contributes for the current scope.
+static uint8_t indKeyVal(const IndState& s, int row, int col) {
+    if (s.scope == IND_SCOPE_KEYS) return (uint8_t)((row << 4) | (col & 0x0F));
+    if (s.scope == IND_SCOPE_ROWS) return (uint8_t)row;
+    if (s.scope == IND_SCOPE_COLS) return (uint8_t)col;
+    return 0;
+}
+static bool indKeySelected(const IndState& s, int row, int col) {
+    if (s.scope == IND_SCOPE_BOARD) return false;
+    return indItemFind(s, indKeyVal(s, row, col)) >= 0;
+}
+
+// Scope picker: choose Board / Keys / Rows / Columns, then click keys to select
+// (up to 4). Rows/Columns are matrix rows/cols; clicking a key toggles its whole
+// row/column. Switching mode clears the selection (items mean different things).
+static void drawScopePopup() {
+    if (g_scopeOpenReq) { ImGui::OpenPopup("Indicator scope"); g_scopeOpenReq = false; }
+    if (g_scopeOpen < 0) return;
+    IndState& s = g_ind[g_scopeOpen];
+    ImGui::SetNextWindowSize({600, 0}, ImGuiCond_Appearing);
+    if (ImGui::BeginPopupModal("Indicator scope", nullptr, ImGuiWindowFlags_NoResize)) {
+        ImGui::Text("Scope for \"%s\"", IND_NAMES[g_scopeOpen]);
+        // Mode selector
+        const char* modes[] = {"Board", "Keys", "Rows", "Columns"};
+        for (int m = 0; m < 4; m++) {
+            if (m) ImGui::SameLine();
+            bool on = s.scope == m;
+            if (on) { ImGui::PushStyleColor(ImGuiCol_Button, SELECTED_BTN);
+                       ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05f,0.05f,0.10f,1.0f)); }
+            if (ImGui::Button(modes[m]) && s.scope != (uint8_t)m) {
+                s.scope = (uint8_t)m; s.count = 0; pushInd(g_scopeOpen);
+            }
+            if (on) ImGui::PopStyleColor(2);
+        }
+        if (s.scope == IND_SCOPE_BOARD)
+            ImGui::TextDisabled("Lights the whole board.");
+        else
+            ImGui::TextDisabled("Click to toggle %s — selected %d/4.",
+                s.scope == IND_SCOPE_KEYS ? "keys" : s.scope == IND_SCOPE_ROWS ? "rows" : "columns",
+                s.count);
+        ImGui::Separator();
+
+        const float MARGIN = 6.0f;
+        float availW  = ImGui::GetContentRegionAvail().x;
+        float ku      = (availW - 2 * MARGIN) / KB_W;
+        float canvasH = KB_H * ku + 2 * MARGIN;
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        if (ImGui::BeginChild("##scopekb", {availW, canvasH}, ImGuiChildFlags_Borders,
+                ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
+            ImVec2 orig = ImGui::GetCursorScreenPos();
+            orig.x += MARGIN; orig.y += MARGIN;
+            ImGui::Dummy({availW, canvasH});
+            auto* dl = ImGui::GetWindowDrawList();
+            ImGuiIO& io = ImGui::GetIO();
+            bool winHovered = ImGui::IsWindowHovered() && s.scope != IND_SCOPE_BOARD;
+            for (const auto& k : layout()) {
+                float x = orig.x + k.x * ku, y = orig.y + k.y * ku;
+                float w = k.w * ku - KEY_GAP, h = ku - KEY_GAP;
+                ImVec2 p0{x, y}, p1{x + w, y + h};
+                bool sel = indKeySelected(s, k.row, k.col);
+                bool hov = winHovered && io.MousePos.x >= p0.x && io.MousePos.x < p1.x &&
+                           io.MousePos.y >= p0.y && io.MousePos.y < p1.y;
+                ImU32 fill = sel ? IM_COL32(s.r, s.g, s.b, 255)
+                           : hov ? IM_COL32(74, 78, 89, 255)
+                                 : IM_COL32(58, 61, 70, 255);
+                dl->AddRectFilled(p0, p1, fill, 4.0f);
+                dl->AddRect(p0, p1, IM_COL32(28, 30, 36, 255), 4.0f);
+                if (hov) dl->AddRect(p0, p1, IM_COL32(51, 102, 204, 255), 4.0f, 0, 2.0f);
+                if (hov && ImGui::IsMouseClicked(0)) {
+                    indItemToggle(s, indKeyVal(s, k.row, k.col)); pushInd(g_scopeOpen);
+                }
+                std::string label = nameOf(g_keymap[k.row][k.col]);
+                while (label.size() > 1 && ImGui::CalcTextSize(label.c_str()).x > w - 4)
+                    label.pop_back();
+                ImVec2 ts = ImGui::CalcTextSize(label.c_str());
+                dl->AddText({x + (w - ts.x) * 0.5f, y + (h - ts.y) * 0.5f},
+                            IM_COL32(205, 210, 219, 255), label.c_str());
+            }
+        }
+        ImGui::EndChild();
+        ImGui::PopStyleVar();
+
+        ImGui::Separator();
+        if (ImGui::Button("Close")) { g_scopeOpen = -1; ImGui::CloseCurrentPopup(); }
+        ImGui::EndPopup();
+    } else {
+        g_scopeOpen = -1;  // dismissed (e.g. Escape) — clear selection
+    }
+}
+
 static void drawIndicators() {
     ImGui::SeparatorText("Indicators");
 
@@ -679,7 +794,7 @@ static void drawIndicators() {
         bool en = g_ind[i].enabled;
         if (ImGui::Checkbox(IND_NAMES[i], &en)) {
             g_ind[i].enabled = en;
-            try { setInd(g_dev, i, en, g_ind[i].r, g_ind[i].g, g_ind[i].b); } catch (...) {}
+            pushInd(i);
         }
         ImGui::SameLine(colX);
         ImGui::SetNextItemWidth(colW);
@@ -688,10 +803,23 @@ static void drawIndicators() {
             g_ind[i].r = (uint8_t)(col[0]*255);
             g_ind[i].g = (uint8_t)(col[1]*255);
             g_ind[i].b = (uint8_t)(col[2]*255);
-            try { setInd(g_dev, i, g_ind[i].enabled, g_ind[i].r, g_ind[i].g, g_ind[i].b); } catch (...) {}
+            pushInd(i);
         }
+        // Scope button: "board" / "N keys" / "N rows" / "N cols"; opens the picker.
+        ImGui::SameLine();
+        char scope[24];
+        if (g_ind[i].scope == IND_SCOPE_BOARD || g_ind[i].count == 0) {
+            snprintf(scope, sizeof(scope), "board");
+        } else {
+            const char* w = g_ind[i].scope == IND_SCOPE_KEYS ? "key"
+                          : g_ind[i].scope == IND_SCOPE_ROWS ? "row" : "col";
+            snprintf(scope, sizeof(scope), "%d %s%s", g_ind[i].count, w,
+                     g_ind[i].count == 1 ? "" : "s");
+        }
+        if (ImGui::SmallButton(scope)) { g_scopeOpen = i; g_scopeOpenReq = true; }
         ImGui::PopID();
     }
+    drawScopePopup();
 }
 
 // ── presets panel ─────────────────────────────────────────────────────────────
