@@ -52,7 +52,7 @@ nlohmann::json readConfig(HidDevice& d) {
     }
 
     nlohmann::json ind = nlohmann::json::array();
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < INDICATOR_COUNT; i++) {
         auto v = getInd(d, i);
         char hex[8];
         snprintf(hex, sizeof(hex), "#%02X%02X%02X", v.r, v.g, v.b);
@@ -175,7 +175,7 @@ int writeConfig(HidDevice& d, const nlohmann::json& p) {
     }
 
     auto& pi = p["indicators"]; auto& ci = cur["indicators"];
-    for (int i = 0; i < 3 && i < (int)pi.size(); i++) {
+    for (int i = 0; i < INDICATOR_COUNT && i < (int)pi.size(); i++) {
         if (ci[i]["enabled"] != pi[i]["enabled"] || ci[i]["color"] != pi[i]["color"]) {
             std::string h = pi[i]["color"];
             auto x = [&](int o) { return (uint8_t)std::stoul(h.substr(o, 2), nullptr, 16); };

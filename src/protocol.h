@@ -6,6 +6,8 @@ static constexpr uint8_t CMD = 0xAC;
 
 // Total tap-dance slots (must match TD_SLOT_COUNT in the firmware keymap).
 static constexpr int TD_SLOT_COUNT = 32;
+// RGB state indicators (must match INDICATOR_COUNT in the firmware).
+static constexpr int INDICATOR_COUNT = 8;
 // Dynamic-keymap dimensions (must match the firmware: 4 layers, 6x16 matrix).
 static constexpr int KM_LAYERS = 4;
 static constexpr int KM_ROWS   = 6;

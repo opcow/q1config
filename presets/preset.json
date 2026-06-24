@@ -3,14 +3,14 @@
   "caps_word_timeout": 5000,
   "combos": [
     {
-      "enabled": false,
+      "enabled": true,
       "keys": [
-        "NO",
-        "NO",
-        "NO",
-        "NO"
+        "LSFT",
+        "LCTL",
+        "RSFT",
+        "RCTL"
       ],
-      "output": "NO"
+      "output": "QK_BOOT"
     },
     {
       "enabled": false,

@@ -46,7 +46,12 @@ All multi-byte scalars are **little-endian**.
 4 auto_shift, 5 caps_word_double_shift (double-tap LShift → Caps Word), 6 caps_word_both_shifts
 (hold both shifts → Caps Word). Bits 5/6 only act while caps_word (bit 0) is enabled.
 
-**Indicators (idx):** 0 Caps Lock, 1 Caps Word, 2 WIN_FN layer.
+**Indicators (idx):** 0 Caps Lock, 1 Caps Word, 2 Win FN layer, 3 Num Lock, 4 Scroll Lock,
+5 Mac FN layer, 6 Windows mode (default layer = Win base), 7 one-shot mod armed. Only one
+paints at a time, in that priority order (Caps Lock highest), each gated on its enabled flag.
+"Windows mode" is persistent — it tints the whole board the entire time it's active. The FN/OS
+layer indices are board-overridable (`RTCFG_FN_INDICATOR_LAYER` / `RTCFG_MAC_FN_INDICATOR_LAYER`
+/ `RTCFG_OS_MODE_LAYER` in firmware `config.h`).
 
 **Debounce methods (idx):** 0 none, 1 sym_defer_g (default), 2 sym_eager_pk,
 3 asym_eager_defer_pk. A `debounce_time` of 0 means no debounce regardless of method.
@@ -93,8 +98,8 @@ Layers: 0 MAC_BASE, 1 MAC_FN, 2 WIN_BASE, 3 WIN_FN. Matrix is 6 rows × 16 cols.
 
 ## EEPROM / versioning
 
-Config persists in QMK's user data block (576 bytes). `EECONFIG_USER_DATA_VERSION` in the
-firmware's `config.h` (currently `0x00514411`) is bumped whenever the struct layout changes;
+Config persists in QMK's user data block (600 bytes). `EECONFIG_USER_DATA_VERSION` in the
+firmware's `config.h` (currently `0x00514412`) is bumped whenever the struct layout changes;
 on the next flash the stored config is discarded and firmware defaults reapplied.
 
 **One-time keymap reset:** growing the user block shifts the dynamic-keymap EEPROM base (it
@@ -123,7 +128,7 @@ changes `EECONFIG_USER_DATA_SIZE`, run **Reset keymap** once to restore key assi
   "key_overrides": [ { "trigger": "1", "replacement": "F1", "trigger_mods": ["LSft"],
                       "suppressed_mods": [], "negative_mods": [], "layers": [0,2],
                       "options": 7, "enabled": true }, … 16 ],
-  "indicators": [ { "enabled": true, "color": "#FF0000" }, … 3 ],
+  "indicators": [ { "enabled": true, "color": "#FF0000" }, … 8 ],
   "keymap": [ [ "ESC","F1", … 96 per layer (6×16, row-major) ], … 4 layers ]
 }
 ```

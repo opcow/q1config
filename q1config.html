@@ -30,7 +30,7 @@
   .key:hover { background:var(--key2); outline:1px solid var(--accent); }
   .key.hl { background:#c3a300; color:#000; }
   .layers { display:inline-flex; gap:4px; }
-  .layers button.on { background:var(--accent); border-color:#258; }
+  .layers button.on { background:var(--accent); border-color:#258; color:#fff; }
   /* tables */
   table { border-collapse:collapse; width:100%; }
   #tdtable { width:auto; }
@@ -423,7 +423,9 @@ const DEMO_DATA={
   combos:Array(16).fill({keys:["NO","NO","NO","NO"],output:"NO",enabled:false}),
   key_overrides:Array(16).fill({trigger:"NO",replacement:"NO",trigger_mods:[],
     suppressed_mods:[],negative_mods:[],layers:[],options:7,enabled:false}),
-  indicators:[{enabled:true,color:"#FF0000"},{enabled:true,color:"#00A000"},{enabled:true,color:"#808000"}],
+  indicators:[{enabled:true,color:"#FF0000"},{enabled:true,color:"#00A000"},{enabled:true,color:"#808000"},
+    {enabled:false,color:"#0000FF"},{enabled:false,color:"#800080"},{enabled:false,color:"#008080"},
+    {enabled:false,color:"#0040FF"},{enabled:false,color:"#FF6000"}],
   keymap:[
     ["ESC","BRID","BRIU","MCTL","LPAD","RGB_VAD","RGB_VAI","MPRV","MPLY","MNXT","MUTE","VOLD","VOLU","DEL","NO","MUTE","GRV","1","2","3","4","5","6","7","8","9","0","MINS","EQL","BSPC","NO","PGUP","TAB","Q","W","E","R","T","Y","U","I","O","P","LBRC","RBRC","BSLS","NO","PGDN","CAPS","A","S","D","F","G","H","J","K","L","SCLN","QUOT","NO","ENT","NO","HOME","LSFT","NO","Z","X","C","V","B","N","M","COMM","DOT","SLSH","NO","RSFT","UP","NO","LCTL","LOpt","LCmd","NO","NO","NO","SPC","NO","NO","NO","LCmd","MO(1)","RCTL","LEFT","DOWN","RGHT"],
     ["TRNS","F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12","TRNS","NO","RGB_TOG","TRNS","Cortana","Siri","BT1","TRNS","TRNS","TRNS","TRNS","TRNS","TRNS","TRNS","TRNS","TRNS","TRNS","NO","TRNS","RGB_TOG","RGB_MOD","RGB_VAI","RGB_HUI","RGB_SAI","RGB_SPI","TRNS","TRNS","TRNS","TRNS","TRNS","TRNS","TRNS","TRNS","NO","TRNS","TRNS","RGB_RMOD","RGB_VAD","RGB_HUD","RGB_SAD","RGB_SPD","TRNS","TRNS","TRNS","TRNS","TRNS","TRNS","NO","TRNS","NO","END","TRNS","NO","TRNS","TRNS","TRNS","TRNS","BT2","NK_TOGG","TRNS","TRNS","TRNS","TRNS","NO","TRNS","TRNS","NO","TRNS","TRNS","TRNS","NO","NO","NO","TRNS","NO","NO","NO","TRNS","TRNS","TRNS","TRNS","TRNS","TRNS"],
@@ -668,10 +670,14 @@ async function buildFeatures(){
       if(+c.dataset.bit===FF.CAPS_WORD) buildFeatures(); });
 }
 
-const IND_NAMES=["Caps Lock","Caps Word","WIN_FN layer"];
+// Order must match the firmware indicator enum (IND_*). "Windows mode" is
+// persistent — when enabled it tints the whole board the entire time you're in
+// Windows mode, replacing the normal RGB effect.
+const IND_NAMES=["Caps Lock","Caps Word","Win FN layer","Num Lock","Scroll Lock",
+                 "Mac FN layer","Windows mode","One-shot mod"];
 async function buildIndicators(){
   const box=$("#indicators"); box.innerHTML="";
-  for(let i=0;i<3;i++){
+  for(let i=0;i<IND_NAMES.length;i++){
     const v=await getInd(i);
     const hex="#"+[v.r,v.g,v.b].map(x=>x.toString(16).padStart(2,"0")).join("");
     const div=document.createElement("div"); div.className="row";
@@ -774,7 +780,7 @@ async function readConfig(){
       negative_mods:maskToList(k.negativeMods),
       layers:[0,1,2,3,4,5,6,7].filter(l=>k.layers&(1<<l)),options:k.options,enabled:k.enabled}); }
   const indicators=[];
-  for(let i=0;i<3;i++){ const v=await getInd(i);
+  for(let i=0;i<IND_NAMES.length;i++){ const v=await getInd(i);
     const hex="#"+[v.r,v.g,v.b].map(x=>x.toString(16).padStart(2,"0")).join("").toUpperCase();
     indicators.push({enabled:!!v.en,color:hex}); }
   // Full dynamic keymap (all layers, row-major) so a preset can reproduce
@@ -820,7 +826,7 @@ async function writeConfig(p){
         triggerMods:listToMask(t.trigger_mods),suppressedMods:listToMask(t.suppressed_mods),
         negativeMods:listToMask(t.negative_mods),
         layers:(t.layers||[]).reduce((m,l)=>m|(1<<l),0),options:t.options??7,enabled:!!t.enabled}); n++; } }
-  for(let i=0;i<3 && i<(p.indicators||[]).length;i++){ const c=cur.indicators[i],t=p.indicators[i];
+  for(let i=0;i<IND_NAMES.length && i<(p.indicators||[]).length;i++){ const c=cur.indicators[i],t=p.indicators[i];
     if(c.enabled!==t.enabled||c.color.toUpperCase()!==t.color.toUpperCase()){
       const h=t.color; await setInd(i,t.enabled?1:0,
         parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),parseInt(h.substr(5,2),16)); n++; } }

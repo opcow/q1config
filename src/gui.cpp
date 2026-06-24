@@ -45,7 +45,8 @@ static void popPrimaryButtonStyle() { ImGui::PopStyleColor(3); }
 
 static const char* LAYER_NAMES[] = {"0 MAC_BASE","1 MAC_FN","2 WIN_BASE","3 WIN_FN"};
 // Slots are named TD0..TDn so a slot's name is its index (matches the firmware).
-static const char* IND_NAMES[]   = {"Caps Lock","Caps Word","WIN_FN layer"};
+static const char* IND_NAMES[]   = {"Caps Lock","Caps Word","Win FN layer","Num Lock",
+                                    "Scroll Lock","Mac FN layer","Windows mode","One-shot mod"};
 static const char* FLAG_NAMES[]  = {"Caps Word","Permissive hold","Hold on other key press","Retro tapping","Auto Shift"};
 static const char* DB_METHOD_LABELS[] = {"None","Symmetric Defer","Symmetric Eager","Asymmetric Eager/Defer"};
 
@@ -62,7 +63,7 @@ static bool    g_showAllTd = false;
 
 static GlobalState  g_global = {};
 static FeatState    g_feat   = {};
-static IndState     g_ind[3] = {};
+static IndState     g_ind[INDICATOR_COUNT] = {};
 static Combo        g_combo[COMBO_SLOT_COUNT] = {};
 static KeyOverride  g_ko[KO_SLOT_COUNT]       = {};
 
@@ -90,7 +91,7 @@ static void loadAll() {
     try { g_global = getGlobal(g_dev); } catch (...) {}
     try { g_feat   = getFeat(g_dev);   } catch (...) {}
     for (int i = 0; i < TD_SLOT_COUNT; i++) try { g_td[i]  = getTd(g_dev, i);  } catch (...) {}
-    for (int i = 0; i < 3;  i++) try { g_ind[i] = getInd(g_dev, i); } catch (...) {}
+    for (int i = 0; i < INDICATOR_COUNT; i++) try { g_ind[i] = getInd(g_dev, i); } catch (...) {}
     for (int i = 0; i < COMBO_SLOT_COUNT; i++) try { g_combo[i] = getCombo(g_dev, i); } catch (...) {}
     for (int i = 0; i < KO_SLOT_COUNT;    i++) try { g_ko[i]    = getKo(g_dev, i);    } catch (...) {}
     loadKeymap();
@@ -126,14 +127,15 @@ static bool KcPickerBody(uint16_t& kc) {
                 float padX    = ImGui::GetStyle().FramePadding.x * 2;
                 for (size_t i = 0; i < vis.size(); i++) {
                     bool sel = vis[i]->second == kc;
-                    if (sel) ImGui::PushStyleColor(ImGuiCol_Button, SELECTED_BTN);
+                    if (sel) { ImGui::PushStyleColor(ImGuiCol_Button, SELECTED_BTN);
+                               ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05f,0.05f,0.10f,1.0f)); }
                     ImGui::PushID((int)i);
                     if (ImGui::Button(vis[i]->first.c_str())) {
                         kc = vis[i]->second; changed = true;
                         ImGui::CloseCurrentPopup();
                     }
                     ImGui::PopID();
-                    if (sel) ImGui::PopStyleColor();
+                    if (sel) ImGui::PopStyleColor(2);
                     // Wrap manually: stay on the row only if the next button fits.
                     if (i + 1 < vis.size()) {
                         float nextW = ImGui::CalcTextSize(vis[i + 1]->first.c_str()).x + padX;
@@ -240,12 +242,13 @@ static void drawKeyboard() {
         if (i > 0) ImGui::SameLine();
         bool on = (g_layer == i);
         pushPrimaryButtonStyle();
-        if (on) ImGui::PushStyleColor(ImGuiCol_Button, SELECTED_BTN);
+        if (on) { ImGui::PushStyleColor(ImGuiCol_Button, SELECTED_BTN);
+                   ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05f,0.05f,0.10f,1.0f)); }
         if (ImGui::SmallButton(LAYER_NAMES[i])) {
             g_layer = i;
             try { loadKeymap(); } catch (...) {}
         }
-        if (on) ImGui::PopStyleColor();
+        if (on) ImGui::PopStyleColor(2);
         popPrimaryButtonStyle();
     }
 
@@ -663,7 +666,7 @@ static void drawIndicators() {
     // Fixed column so all color pickers line up after the longest label
     float colX = ImGui::GetFrameHeight()
                + ImGui::GetStyle().ItemInnerSpacing.x
-               + ImGui::CalcTextSize("WIN_FN layer").x
+               + ImGui::CalcTextSize("Windows mode").x
                + ImGui::GetStyle().ItemSpacing.x;
     // Swatch + single hex field "#RRGGBB"
     float colW = ImGui::GetFrameHeight()
@@ -671,7 +674,7 @@ static void drawIndicators() {
                + ImGui::CalcTextSize("#FFFFFF").x
                + ImGui::GetStyle().FramePadding.x * 2;
 
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < INDICATOR_COUNT; i++) {
         ImGui::PushID(i);
         bool en = g_ind[i].enabled;
         if (ImGui::Checkbox(IND_NAMES[i], &en)) {

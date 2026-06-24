@@ -203,8 +203,9 @@ int cli_main(int argc, char* argv[]) {
 
     if (!strcmp(cmd, "indicators")) {
         if (!connect()) return 1;
-        const char* names[] = {"Caps Lock", "Caps Word", "WIN_FN layer"};
-        for (int i = 0; i < 3; i++) {
+        const char* names[] = {"Caps Lock", "Caps Word", "Win FN layer", "Num Lock",
+                              "Scroll Lock", "Mac FN layer", "Windows mode", "One-shot mod"};
+        for (int i = 0; i < INDICATOR_COUNT; i++) {
             auto v = getInd(dev, i);
             printf("%-14s  %s  #%02X%02X%02X\n",
                    names[i], v.enabled ? "on " : "off", v.r, v.g, v.b);
