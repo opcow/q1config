@@ -6,8 +6,9 @@ Repository: <https://github.com/opcow/q1config>
 
 Host-side configuration tools for a customized **Keychron Q1 Pro** (ANSI knob) running a
 QMK `rtcfg` keymap that exposes a raw-HID runtime-config interface (command byte `0xAC`).
-Change tap dance, tapping term, Caps Word, Auto Shift, key assignments, and RGB state
-indicators **at runtime** — no recompile/reflash — and save/load configurations as files.
+Change tap dance, tapping term, Caps Word, Auto Shift, combos, key overrides, key assignments,
+macros, RGB lighting, and RGB state indicators **at runtime** — no recompile/reflash — and
+save/load configurations as files.
 
 > **Requires a one-time firmware flash.** These tools only work once the board is running the
 > custom `rtcfg` firmware build (see the **Companion firmware** note below) — the
@@ -21,10 +22,12 @@ indicators **at runtime** — no recompile/reflash — and save/load configurati
 Three front-ends over the same protocol:
 
 - **`q1config`** — a native desktop GUI (C++ / Dear ImGui) with a graphical keyboard, a
-  categorized keycode picker, tap-dance editor, timing and indicator controls, and presets.
-  The same binary doubles as a command-line tool when given arguments. No Python needed.
+  categorized keycode picker, tap-dance editor, combo and key-override editors, timing,
+  indicator, lighting, and macro controls, and presets. The same binary doubles as a
+  command-line tool when given arguments. No Python needed.
 - **`q1config.html`** — a single-file browser GUI (WebHID; Chrome/Edge) with a graphical
-  keyboard, key remapping, tap-dance editor, sliders/toggles, color pickers, and presets.
+  keyboard, key remapping, tap-dance editor, combo and key-override editors, sliders/toggles,
+  color pickers, and lighting and macro editors, and presets.
 - **`q1config.py`** — command-line tool (Python + `hidapi`).
 
 > Companion firmware: the `rtcfg` keymap in the QMK tree —
@@ -71,9 +74,10 @@ build\Release\q1config.exe        # Windows
 ./build/q1config                  # macOS/Linux
 ```
 
-Connect the keyboard and use the **Keyboard / Tap Dance / Timing / Indicators** tabs;
-click any key to open the categorized keycode picker. Save/Load presets use a native file
-dialog and share the same JSON format as the other front-ends.
+Connect the keyboard and use the **Keyboard / Features / Tap Dance / Timing / Combos /
+Key Overrides / Indicators / Lighting / Macros** tabs; click any key to open the categorized
+keycode picker. Save/Load presets use a native file dialog and share the same JSON format as
+the other front-ends.
 
 Pass a **command** to use the same binary as a CLI instead of opening the window:
 

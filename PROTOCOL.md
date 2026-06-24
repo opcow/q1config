@@ -46,12 +46,13 @@ All multi-byte scalars are **little-endian**.
 4 auto_shift, 5 caps_word_double_shift (double-tap LShift → Caps Word), 6 caps_word_both_shifts
 (hold both shifts → Caps Word). Bits 5/6 only act while caps_word (bit 0) is enabled.
 
-**Indicators (idx):** 0 Caps Lock, 1 Caps Word, 2 Win FN layer, 3 Num Lock, 4 Scroll Lock,
-5 Mac FN layer, 6 Windows mode (default layer = Win base), 7 Mac mode (default layer = Mac base),
-8 one-shot mod armed. Each enabled, active indicator paints its scope; they are layered by
-priority (Caps Lock highest, the OS-mode baselines lowest) so where two scopes share a key the
-higher-priority indicator wins. "Windows mode" and "Mac mode" are persistent — they tint their
-scope the entire time they're active. The FN/OS layer indices are board-overridable
+**Indicators (idx):** 0 Caps Lock, 1 Caps Word, 2 Num Lock, 3 Scroll Lock, 4 one-shot mod
+armed, 5 Mac FN layer, 6 Win FN layer, 7 Mac mode (default layer = Mac base), 8 Windows mode
+(default layer = Win base). Each enabled, active indicator paints its scope; where two scopes
+share a key they are layered by **scope specificity** — smaller wins, key > row > column >
+board, so a more-specific indicator draws on top of a larger one. Within the same scope tier a
+fixed type order breaks the tie (Caps Lock highest, the OS-mode baselines lowest). "Windows
+mode" and "Mac mode" are persistent — they tint their scope the entire time they're active. The FN/OS layer indices are board-overridable
 (`RTCFG_FN_INDICATOR_LAYER` / `RTCFG_MAC_FN_INDICATOR_LAYER` / `RTCFG_OS_MODE_LAYER` /
 `RTCFG_OS_MAC_LAYER` in firmware `config.h`).
 
@@ -106,10 +107,30 @@ byte 1 is data (the layer), not a status.
 
 Layers: 0 MAC_BASE, 1 MAC_FN, 2 WIN_BASE, 3 WIN_FN. Matrix is 6 rows × 16 cols.
 
+## VIA dynamic-macro commands
+
+Standard VIA, handled by `via.c` (not `0xAC`). Macros are stored in their own EEPROM region,
+separate from the `0xAC` user config — `Reset config` does not clear them. The buffer is read
+and written in 28-byte chunks (data starts at reply byte 4).
+
+| Cmd | Name | Bytes |
+|----|------|-----|
+| 0C | get_count | `[0C]` → `[0C, count]` |
+| 0D | get_buffer_size | `[0D]` → `[0D, sz_hi, sz_lo]` |
+| 0E | get_buffer | `[0E, off_hi, off_lo, n]` → `[0E, off_hi, off_lo, n, data…]` |
+| 0F | set_buffer | `[0F, off_hi, off_lo, n, data…]` |
+| 10 | reset | `[10]` (clear all macros) |
+
+**Buffer format** — macros are packed back-to-back, each terminated by `0x00`. Within a macro,
+raw bytes are literal text (1-byte ASCII keycodes); a `0x01` prefix starts an action:
+`01 01 <kc>` tap, `01 02 <kc>` press, `01 03 <kc>` release, `01 04 <decimal-digits> 7C` delay
+in ms (the `0x7C` `|` terminates the digits). A keycode of `MACRO<n>` (0x7700+n) in the keymap
+plays slot *n*.
+
 ## EEPROM / versioning
 
 Config persists in QMK's user data block (656 bytes). `EECONFIG_USER_DATA_VERSION` in the
-firmware's `config.h` (currently `0x00514415`) is bumped whenever the struct layout changes;
+firmware's `config.h` (currently `0x00514416`) is bumped whenever the struct layout changes;
 on the next flash the stored config is discarded and firmware defaults reapplied.
 
 **One-time keymap reset:** growing the user block shifts the dynamic-keymap EEPROM base (it
