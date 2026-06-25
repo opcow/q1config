@@ -6,6 +6,8 @@ Repository: <https://github.com/opcow/smial>
 
 Firmware source: <https://github.com/opcow/qmk_firmware/tree/raw-hid-config/keyboards/keychron>
 
+QMK Toolbox for flashing: <https://qmk.fm/toolbox>
+
 Host-side configuration tools for Keychron keyboards running a
 QMK `rtcfg` keymap that exposes a raw-HID runtime-config interface (command byte `0xAC`).
 Change tap dance, tapping term, Caps Word, Auto Shift, combos, key overrides, key assignments,
